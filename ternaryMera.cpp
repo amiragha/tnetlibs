@@ -57,15 +57,6 @@ void ternaryMera (Tensor & Hamiltonian0, int max_card){
             DensityMatrix2 = ternary_Descending(DensityMatrix2, Unitary2, Isometry2);
         }
     cout << endl;
-    // vector<Index> dmr(DensityMatrix2.indeces.begin(),
-    //                   DensityMatrix2.indeces.begin()+2);
-    // for (int i = 0; i < dmr.size(); ++i)
-    //     cout << dmr[i].name << endl;
-    // vector<Index> dmc(DensityMatrix2.indeces.begin()+2,
-    //                   DensityMatrix2.indeces.begin()+4);
-    // for (int i = 0; i < dmc.size(); ++i)
-    //     cout << dmc[i].name << endl;
-    // DensityMatrix2.toMat(dmr,dmc);
 
     cout << "first level density matrix" << endl;
     Tensor DensityMatrix1 = ternary_Descending(DensityMatrix2,Unitary1,Isometry1);
@@ -113,23 +104,23 @@ void ternaryMera (Tensor & Hamiltonian0, int max_card){
     vector<Index> Uenvc;
     cx_mat U, V;
     vec s;
+
     // iteration loop
-    for (int iter = 0; iter < 2; ++iter)
+    for (int iter = 0; iter < 4; ++iter)
         {
             cout << endl << "starting iteration number : " << iter+1 << " ==> "<< endl;
             cout <<         "------------------------------" << endl;
             cout << "Level 0 :" << endl;
 
             Iso_env = ternary_Environment_Iso(Hamiltonian0,DensityMatrix1,Unitary0,Isometry0);
-            Uni_env = ternary_Environment_Unit(Hamiltonian0,DensityMatrix1,Unitary0,Isometry0);
-
             Ienvr = vector<Index> (Iso_env.indeces.begin(), Iso_env.indeces.begin()+3);
             Ienvc = vector<Index> (Iso_env.indeces.begin()+3, Iso_env.indeces.begin()+4);
-            Uenvr = vector<Index> (Uni_env.indeces.begin(), Uni_env.indeces.begin()+2);
-            Uenvc = vector<Index> (Uni_env.indeces.begin()+2, Uni_env.indeces.begin()+4);
-
             svd(U,s,V,Iso_env.toMat(Ienvr, Ienvc).t());
             Isometry0.fromMat(-V.submat(span(),span(0,cn0-1))*U.t(),Ienvr, Ienvc);
+
+            Uni_env = ternary_Environment_Unit(Hamiltonian0,DensityMatrix1,Unitary0,Isometry0);
+            Uenvr = vector<Index> (Uni_env.indeces.begin(), Uni_env.indeces.begin()+2);
+            Uenvc = vector<Index> (Uni_env.indeces.begin()+2, Uni_env.indeces.begin()+4);
             svd(U,s,V,Uni_env.toMat(Uenvr, Uenvc));
             Unitary0.fromMat(-V*U.t(),Uenvr, Uenvc);
 
@@ -138,34 +129,32 @@ void ternaryMera (Tensor & Hamiltonian0, int max_card){
             cout << "Level 1 :" << endl;
 
             Iso_env = ternary_Environment_Iso(Hamiltonian1,DensityMatrix2,Unitary1,Isometry1);
-            Uni_env = ternary_Environment_Unit(Hamiltonian1,DensityMatrix2,Unitary1,Isometry1);
-
             Ienvr = vector<Index> (Iso_env.indeces.begin(), Iso_env.indeces.begin()+3);
             Ienvc = vector<Index> (Iso_env.indeces.begin()+3, Iso_env.indeces.begin()+4);
-            Uenvr = vector<Index> (Uni_env.indeces.begin(), Uni_env.indeces.begin()+2);
-            Uenvc = vector<Index> (Uni_env.indeces.begin()+2, Uni_env.indeces.begin()+4);
-
             svd(U,s,V,Iso_env.toMat(Ienvr, Ienvc).t());
             Isometry1.fromMat(-V.submat(span(),span(0,cn1-1))*U.t(),Ienvr, Ienvc);
+
+            Uni_env = ternary_Environment_Unit(Hamiltonian1,DensityMatrix2,Unitary1,Isometry1);
+            Uenvr = vector<Index> (Uni_env.indeces.begin(), Uni_env.indeces.begin()+2);
+            Uenvc = vector<Index> (Uni_env.indeces.begin()+2, Uni_env.indeces.begin()+4);
             svd(U,s,V,Uni_env.toMat(Uenvr, Uenvc));
-            Unitary1.fromMat(V*U.t(),Uenvr, Uenvc);
+            Unitary1.fromMat(-V*U.t(),Uenvr, Uenvc);
 
             Hamiltonian2 = ternary_Ascending(Hamiltonian1, Unitary1, Isometry1);
 
             cout << "Level 2 :" << endl;
 
             Iso_env = ternary_Environment_Iso(Hamiltonian2,DensityMatrix2,Unitary2,Isometry2);
-            Uni_env = ternary_Environment_Unit(Hamiltonian2,DensityMatrix2,Unitary2,Isometry2);
-
             Ienvr = vector<Index> (Iso_env.indeces.begin(), Iso_env.indeces.begin()+3);
             Ienvc = vector<Index> (Iso_env.indeces.begin()+3, Iso_env.indeces.begin()+4);
-            Uenvr = vector<Index> (Uni_env.indeces.begin(), Uni_env.indeces.begin()+2);
-            Uenvc = vector<Index> (Uni_env.indeces.begin()+2, Uni_env.indeces.begin()+4);
-
             svd(U,s,V,Iso_env.toMat(Ienvr, Ienvc).t());
             Isometry2.fromMat(-V.submat(span(),span(0,cn2-1))*U.t(),Ienvr, Ienvc);
+
+            Uni_env = ternary_Environment_Unit(Hamiltonian2,DensityMatrix2,Unitary2,Isometry2);
+            Uenvr = vector<Index> (Uni_env.indeces.begin(), Uni_env.indeces.begin()+2);
+            Uenvc = vector<Index> (Uni_env.indeces.begin()+2, Uni_env.indeces.begin()+4);
             svd(U,s,V,Uni_env.toMat(Uenvr, Uenvc));
-            Unitary2.fromMat(V*U.t(),Uenvr, Uenvc);
+            Unitary2.fromMat(-V*U.t(),Uenvr, Uenvc);
 
             Hamiltonian3 = ternary_Ascending(Hamiltonian2, Unitary2, Isometry2);
 
@@ -189,58 +178,6 @@ void ternaryMera (Tensor & Hamiltonian0, int max_card){
             energy(Hamiltonian1,DensityMatrix1);
 
         }
-    // cout << "environment for Isometry2" << endl;
-    // Tensor Iso_env= ternary_Environment_Iso(Hamiltonian3,DensityMatrix2,Unitary2,Isometry2);
-
-    // cout << "test,changed" << endl;
-    // Isometry2.reIndex(Iso_env.indeces);
-    // (Iso_env * Isometry2).print(1);
-
-    // cout << "environment for Unitary2" << endl;
-    // Tensor Uni_env = ternary_Environment_Unit(Hamiltonian3,DensityMatrix2,Unitary2,Isometry2);
-
-    // cout << "test,changed" << endl;
-    // Unitary2.reIndex(Uni_env.indeces);
-    // (Uni_env * Unitary2).print(1);
-
-    // vector<Index> Ienvr (Iso_env.indeces.begin(), Iso_env.indeces.begin()+3);
-    // vector<Index> Ienvc (Iso_env.indeces.begin()+3, Iso_env.indeces.begin()+4);
-    // vector<Index> Uenvr (Uni_env.indeces.begin(), Uni_env.indeces.begin()+2);
-    // vector<Index> Uenvc (Uni_env.indeces.begin()+2, Uni_env.indeces.begin()+4);
-    // Iso_env.printIndeces();
-    // Uni_env.printIndeces();
-    // //cout << envr[0].name << ", " << envr[1].name <<endl;
-    // //cout << envc[0].name << ", " << envc[1].name <<endl;
-    // for (int iter=0; iter < 3; ++iter)
-    //     {
-    //         // changing second Unitary and Isomery
-    //         svd(U,s,V,Iso_env.toMat(Ienvr, Ienvc).t());
-    //         Isometry2.fromMat(-V.submat(span(),span(0,8))*U.t(),Ienvr, Ienvc);
-    //         svd(U,s,V,Uni_env.toMat(Uenvr, Uenvc));
-    //         Unitary2.fromMat(V*U.t(),Uenvr, Uenvc);
-
-    //         for (int i = 0; i < 8; ++i)
-    //             {
-    //                 cout << i+1 <<endl;
-    //                 // cout << endl;
-    //                 // for (int j = 0; j < 10; ++j)
-    //                 //     cout << DensityMatrix.values[100*j] << "\t";
-    //                 DensityMatrix2 = ternary_Descending(DensityMatrix2, Unitary2, Isometry2);
-    //             }
-    //         Tensor DensityMatrix1 = ternary_Descending(DensityMatrix2,Unitary1,Isometry1);
-
-    //         Tensor DensityMatrix0 = ternary_Descending(DensityMatrix1,Unitary0,Isometry0);
-
-    //         Tensor Hamiltonian3 = ternary_Ascending(Hamiltonian2, Unitary2, Isometry2);
-
-    //         cout << "energy at level 3 is :" << endl;
-    //         energy(Hamiltonian3,DensityMatrix2);
-    //         cout << "energy at level 2 is :" << endl;
-    //         energy(Hamiltonian2,DensityMatrix2);
-    //         Tensor Iso_env= ternary_Environment_Iso(Hamiltonian3,DensityMatrix2,Unitary2,Isometry2);
-    //         Tensor Uni_env = ternary_Environment_Unit(Hamiltonian3,DensityMatrix2,Unitary2,Isometry2);
-
-    //     }
 
 }
 

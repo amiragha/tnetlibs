@@ -45,8 +45,16 @@ void Tensor::print(int brk){
     cout << endl;
 }
 
-cx_mat Tensor::toMat (const vector<Index> & rowIndeces,
-                      const vector<Index> & colIndeces) const {
+/**
+ * @fn toMat
+ * creating a cx_mat from a tensor
+ * @param rowIndeces indeces to keep in row
+ * @param colIndeces indeces to keep in column
+ *
+ */
+cx_mat
+Tensor::toMat (const vector<Index> & rowIndeces,
+               const vector<Index> & colIndeces) const {
 
     //computing the prod of rows
     vector<int> prodRow(1,1);
@@ -93,8 +101,17 @@ cx_mat Tensor::toMat (const vector<Index> & rowIndeces,
     return result;
 }
 
-void Tensor::fromMat(const cx_mat & matrix,
-                     const vector<Index> &row, const vector<Index> & col){
+/**
+ * @fn fromMat
+ * creating a tensor from a cx_mat
+ * @param matrix the cx_mat
+ * @param rowIndeces indeces to keep in row
+ * @param colIndeces indeces to keep in column
+ * @return void
+ */
+void
+Tensor::fromMat(const cx_mat & matrix,
+                const vector<Index> &row, const vector<Index> & col){
     indeces.clear();
     indeces.insert(indeces.end(), row.begin(), row.end());
     indeces.insert(indeces.end(), col.begin(), col.end());
@@ -167,26 +184,27 @@ vector<vector<Index> > Tensor::similarities(const Tensor & other){
     return result;
 }
 
-Tensor Tensor::operator * (const Tensor & other){
+/**
+ * overloading operator *
+ *
+ * the * operator does the tensor product of the two tensors
+ * if there is any common indeces it manages the contraction
+ *
+ * it first finds the final indeces by calling the similarities function
+ * and then performs the product-contraction operation
+ *
+ * return a new Tensor
+ */
+Tensor
+Tensor::operator * (const Tensor & other){
     // cout << "calling *" << endl;
+
     //finding the similarities:
     // 3 indeces are needed rowFinal contracting colFinal
     vector<vector<Index> > sims = similarities(other);
     vector<Index> rowFinal = sims[0];
     vector<Index> colFinal = sims[1];
     vector<Index> contracting = sims[2];
-    // cout << "rowFinal" << endl;
-    // for (int i = 0; i < rowFinal.size(); ++i)
-    //     cout << rowFinal[i].name <<"\t";
-    // cout << endl;
-    // cout << "colFinal" << endl;
-    // for (int i = 0; i < colFinal.size(); ++i)
-    //     cout << colFinal[i].name <<"\t";
-    // cout << endl;
-    // cout << "contracting" << endl;
-    // for (int i = 0; i < contracting.size(); ++i)
-    //     cout << contracting[i].name <<"\t";
-    // cout << endl;
 
     // using the vectors to change the representation of tensors
     prodCards();
@@ -197,10 +215,6 @@ Tensor Tensor::operator * (const Tensor & other){
     vector<Index> indecesFinal (rowFinal);
     for (int i = 0; i < colFinal.size(); ++i)
         indecesFinal.push_back(colFinal[i]);
-
-    // for (int i = 0; i < indecesFinal.size(); ++i)
-    //     cout << indecesFinal[i].name << "\t";
-    // cout << endl;
 
     // calculating the cardinalities
     int rowCard = 1, colCard = 1;
