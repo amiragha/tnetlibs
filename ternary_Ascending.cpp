@@ -8,6 +8,9 @@ Tensor ternary_Ascending (Tensor & Hamiltonian,
     // extracting index information about input Tensors
     int in_card = Isometry.indeces[0].card;
     int out_card = Isometry.indeces[3].card;
+    vector<Index> h_input = Hamiltonian.indeces;
+    vector<Index> u_input = Unitary.indeces;
+    vector<Index> t_input = Isometry.indeces;
 
     // we need UnitaryStar and IsometryStart as well
     Tensor UnitaryStar = Unitary;
@@ -137,6 +140,10 @@ Tensor ternary_Ascending (Tensor & Hamiltonian,
     //     cout << Temp.indeces[i].name << "\t";
     // cout << endl;
 
+    // reIndexing to original indeces
+    Hamiltonian.reIndex(h_input);
+    Isometry.reIndex(t_input);
+    Unitary.reIndex(u_input);
     return Temp;
 
 }

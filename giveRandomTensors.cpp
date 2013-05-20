@@ -2,7 +2,7 @@
 
 void giveRandomTensors(Tensor & Unitary, Tensor & Isometry, int in, int out){
 
-    srand(time(NULL));
+    //srand(time(NULL));
     Index u1("u1",in),u2("u2",in),u3("u3",in),u4("u4",in),
         t1("t1",in),t2("t2",in),t3("t3",in),t4("t4",out);
 

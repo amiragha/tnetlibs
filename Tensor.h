@@ -35,14 +35,48 @@ class Tensor {
     long prodCards();
     void print(int brk);
     arma::cx_mat toMat (const std::vector<Index> & rowIndeces,
-               const std::vector<Index> & colIndeces) const;
+                        const std::vector<Index> & colIndeces) const;
+    /**
+     * fromMat
+     * creating a tensor from a cx_mat matrix given the indeces that are on the row
+     * and column of the given matrix.
+     *
+     * param matrix the cx_mat
+     * param rowIndeces indeces to keep in row
+     * param colIndeces indeces to keep in column
+     *
+     * return void
+     */
     void fromMat(const arma::cx_mat & matrix,
                  const std::vector<Index> &row, const std::vector<Index> & col);
+
+    /**
+     * similarities
+     *
+     * finding the similarities between indeces of this tensor with another one
+     *
+     * param other Tensor
+     *
+     * return a vector consisting of similar indeces (contracting), other
+     * indeces of this Tensor as row of the final matrix and other indeces
+     * of other Tensor as col of the final matrix.
+     */
     std::vector<std::vector<Index> > similarities(const Tensor &other);
+
+    /**
+     * overloading operator *
+     *
+     * the * operator does the tensor product of the two tensors
+     * if there is any common indeces it manages the contraction
+     *
+     * it first finds the final indeces by calling the similarities function
+     * and then performs the product-contraction operation
+     *
+     * return a new Tensor
+     */
     Tensor operator * (const Tensor & other);
     Tensor operator + (const Tensor & other);
     Tensor& operator / (double num);
-    void operator << (cx_d num);
     void conjugate();
     void reIndex(const std::vector<Index> & newIndeces);
     void rearrange(const std::vector<Index> & newOrder);

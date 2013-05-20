@@ -1,5 +1,5 @@
 /**
- * Index header
+ * @file Index.h
  */
 #ifndef _INDEX_H_
 #define _INDEX_H_
@@ -9,6 +9,10 @@
 #include <vector>
 #include <map>
 
+/** class Index
+ * a class for representing indeces of a Tensor
+ * each Index have string name and a long cardinality
+ */
 class Index {
  public:
     std::string name;

@@ -4,7 +4,9 @@
 using namespace std;
 using namespace arma;
 
-
+/**
+ * Constructor Methods
+ */
 Tensor::Tensor(vector<Index> & indxs,
                vector<cx_d > & vals){
 
@@ -23,7 +25,15 @@ Tensor::~Tensor(){
     // cout << "dying" << endl;
 }
 
-void Tensor::print(int brk){
+/**
+ * printing the tensor
+ * receiving an int for number of elements to print on one line
+ * param brk number of elements before a line break
+ * does a pretty printing of complex numbers
+ * return void
+ */
+void
+Tensor::print(int brk){
     double real, imag;
     double thresh = 0.0000000001;
     for (int i = 0; i < values.size(); ++i)
@@ -46,11 +56,14 @@ void Tensor::print(int brk){
 }
 
 /**
- * @fn toMat
- * creating a cx_mat from a tensor
- * @param rowIndeces indeces to keep in row
- * @param colIndeces indeces to keep in column
+ * toMat
+ * creating a cx_mat from a tensor give the indeces to put on the row
+ * and column of the resulting matrix
  *
+ * param rowIndeces indeces to keep in row
+ * param colIndeces indeces to keep in column
+ *
+ * return cx_mat the resulting matrix
  */
 cx_mat
 Tensor::toMat (const vector<Index> & rowIndeces,
@@ -102,12 +115,15 @@ Tensor::toMat (const vector<Index> & rowIndeces,
 }
 
 /**
- * @fn fromMat
- * creating a tensor from a cx_mat
- * @param matrix the cx_mat
- * @param rowIndeces indeces to keep in row
- * @param colIndeces indeces to keep in column
- * @return void
+ * fromMat
+ * creating a tensor from a cx_mat matrix given the indeces that are on the row
+ * and column of the given matrix.
+ *
+ * param matrix the cx_mat
+ * param rowIndeces indeces to keep in row
+ * param colIndeces indeces to keep in column
+ *
+ * return void
  */
 void
 Tensor::fromMat(const cx_mat & matrix,
@@ -159,7 +175,19 @@ Tensor::fromMat(const cx_mat & matrix,
 
 }
 
-vector<vector<Index> > Tensor::similarities(const Tensor & other){
+/**
+ * similarities
+ *
+ * finding the similarities between indeces of this tensor with another one
+ *
+ * param other Tensor
+ *
+ * return a vector consisting of similar indeces (contracting), other
+ * indeces of this Tensor as row of the final matrix and other indeces
+ * of other Tensor as col of the final matrix.
+ */
+vector<vector<Index> >
+Tensor::similarities(const Tensor & other){
     // cout << "calling sim" << endl;
     // check whether any of our tensor indeces exist in the other
     vector<vector<Index> > result;
@@ -237,7 +265,15 @@ Tensor::operator * (const Tensor & other){
     return result;
 }
 
-Tensor Tensor::operator + (const Tensor & other){
+/**
+ * overloading operator +
+ *
+ * the + operator sums the elements of two vector with same indeces
+ *
+ * return a new Tensor
+ */
+Tensor
+Tensor::operator + (const Tensor & other){
     bool equal= true;
     if (indeces.size() != other.indeces.size())
         equal = false;
@@ -264,7 +300,16 @@ Tensor Tensor::operator + (const Tensor & other){
         }
 }
 
-Tensor& Tensor::operator / (double num){
+/**
+ * overloading operator /
+ * divinding all of the elements of the Tensor by a number
+ *
+ * param num double divisor
+ *
+ * return reference to the same Tensor
+ */
+Tensor&
+Tensor::operator / (double num){
     for (int i = 0; i < values.size(); ++i)
         {
             values[i] = values[i]/num;
@@ -272,8 +317,15 @@ Tensor& Tensor::operator / (double num){
     return *this;
 }
 
-
-long Tensor::prodCards(){
+/**
+ * prodCards
+ * finding the cardinality of the tensor and filling the cardinality table
+ * in the coeff.
+ *
+ * return the full cardinality of the Tensor
+ */
+long
+Tensor::prodCards(){
     long prod = 1;
     coeff.clear();
     for (int idx = 0; idx < indeces.size(); ++idx)
@@ -285,24 +337,42 @@ long Tensor::prodCards(){
     return prod;
 }
 
-
-void Tensor::conjugate (){
+/**
+ * conjugate
+ * taking the complex conjugate of all the element of the Tensor
+ *
+ * changes the current Tensor
+ * return void
+ */
+void
+Tensor::conjugate (){
     double imaginary;
     for (int i = 0; i < values.size(); ++i)
-        {
-            values[i] = cx_d(values[i].real(), -values[i].imag());
-            //cout << endl<<i << " :" << values[i];
-        }
+        values[i] = cx_d(values[i].real(), -values[i].imag());
 }
 
-void Tensor::reIndex(const vector<Index> & newIndeces){
+/**
+ * reIndex
+ * changing the Indeces of the Tensor while leaving the elements unchanged
+ * this correspond to just renaming the Indeces.
+ */
+void
+Tensor::reIndex(const vector<Index> & newIndeces){
     // check for sanity of input (TO-DO)
     indeces = newIndeces;
     coeff.clear();
     allCards = prodCards();
 }
 
-void Tensor::rearrange(const vector<Index> & newOrder){
+/**
+ * rearrange
+ * rearranging the Tensors given new order for the indeces
+ * this function just changes the order of elements and indeces
+ *
+ * return void
+ */
+void
+Tensor::rearrange(const vector<Index> & newOrder){
     // check for sanity of input (TO-DO)
     vector<cx_d> oldvalues = values;
     vector<long> newCards(1,1);

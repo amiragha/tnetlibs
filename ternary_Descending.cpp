@@ -9,6 +9,9 @@ Tensor ternary_Descending (Tensor & DensityMatrix,
     // extracting index information about input Tensors
     int in_card = Isometry.indeces[3].card;
     int out_card = Isometry.indeces[0].card;
+    vector<Index> d_input = DensityMatrix.indeces;
+    vector<Index> u_input = Unitary.indeces;
+    vector<Index> t_input = Isometry.indeces;
 
     // we need UnitaryStar and IsometryStart as well
     Tensor UnitaryStar = Unitary;
@@ -122,6 +125,12 @@ Tensor ternary_Descending (Tensor & DensityMatrix,
     // cout << endl;
     // cout << "calculation of Left, Center and Right done" << endl;
     Temp = ((Right + Center) + Left)/3;
+
+    // reIndexing to original input
+    DensityMatrix.reIndex(d_input);
+    Unitary.reIndex(u_input);
+    Isometry.reIndex(t_input);
+
     return Temp;
 
 }
