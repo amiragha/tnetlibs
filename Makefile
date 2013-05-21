@@ -4,9 +4,7 @@ LDLIBS=-larmadillo
 LDFLAGS=
 RM=rm -f
 
-SRCS=test.cpp Tensor.cpp Index.cpp ternary_Ascending.cpp ternary_Descending.cpp \
-	ternaryMera.cpp giveRandomDensity.cpp giveRandomTensors.cpp energy.cpp \
-	ternary_Environment_Unit.cpp ternary_Environment_Iso.cpp
+SRCS=test.cpp Tensor.cpp Index.cpp ternaryMera.cpp
 OBJS=$(subst .cpp,.o,$(SRCS))
 EXE=test
 
