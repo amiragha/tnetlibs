@@ -42,6 +42,18 @@ int main(int argc, char *argv[])
     H.fromMat(ITF,vhr,vhc);
     // H.fromMat(I4,vhr,vhc);
 
+    // testing
+    // vector<Index> vvv = {a,b,c};
+    // vector<Index> vvr = {a};
+    // vector<Index> vvc = {b,c};
+
+    // Tensor T(vvv);
+    // cx_mat A = randu<cx_mat>(3,4);
+    // T.fromMat(A,vvr,vvc);
+    // (T*H).print(4);
+    //  Tensor Hstar = H;
+    // Hstar.conjugate();
+    // (H * Hstar).print(1);
     ternaryMera(H,9);
 
     return 0;

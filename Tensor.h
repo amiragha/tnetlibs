@@ -25,6 +25,7 @@ class Tensor {
     std::vector<cx_d > values; /// complex<double> double matrix from armadillo package
     long allCards;
     std::map<std::string, long> coeff;/// mapping from Index to the coefficient
+    std::vector<int> vecCoeff; /// vector mapping from index to the coefficient
 
     // arma::cx_mat matRepresentation;
 
@@ -81,6 +82,26 @@ class Tensor {
     void reIndex(const std::vector<Index> & newIndeces);
     void rearrange(const std::vector<Index> & newOrder);
     void printIndeces() const;
+
+    /**
+     * mapFinder
+     * finding the mapping between indeces with indexes in the full vector
+     * param fullIndeces a vector of indexes contating all of the indeces
+     *
+     * return vector<int> that is the indexes of indeces in the full vector
+     */
+    std::vector<int> mapFinder(const std::vector<Index> fullIndeces) const;
+
+    /**
+     * getValueOfAsgn
+     * getting the value to the given assignment for indeces
+     *
+     * param asgns is a the given assignments (vector<int>)
+     *
+     * return complex<double> or cx_d
+     */
+    cx_d getValueOfAsgn(const std::vector<int> asgns) const;
+
 };
 
 

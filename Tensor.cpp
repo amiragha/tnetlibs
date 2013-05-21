@@ -328,9 +328,11 @@ long
 Tensor::prodCards(){
     long prod = 1;
     coeff.clear();
+    vecCoeff.clear();
     for (int idx = 0; idx < indeces.size(); ++idx)
         {
             coeff[indeces[idx].name] = prod;
+            vecCoeff.push_back(prod);
             prod *= indeces[idx].card;
         }
     allCards = prod;
@@ -360,7 +362,6 @@ void
 Tensor::reIndex(const vector<Index> & newIndeces){
     // check for sanity of input (TO-DO)
     indeces = newIndeces;
-    coeff.clear();
     allCards = prodCards();
 }
 
@@ -398,5 +399,54 @@ void Tensor::printIndeces() const{
     for (int i = 0; i < indeces.size(); ++i)
         cout << indeces[i].name << ":" <<indeces[i].card << "\t";
     cout << endl;
+}
+
+/**
+ * mapFinder
+ * finding the mapping between indeces with indexes in the full vector
+ * param fullIndeces a vector of indexes contating all of the indeces
+ *
+ * return vector<int> that is the indexes of indeces in the full vector
+ */
+vector<int> Tensor::mapFinder(const vector<Index> fullIndeces) const {
+    vector<int> idxMap;
+    // for (int i = 0; i < fullIndeces.size(); ++i)
+    //     {
+    //         cout << fullIndeces[i].name << "\t";
+    //     }
+    // cout << endl;
+    for (int i = 0; i < indeces.size(); ++i)
+        {
+            for (int j = 0; j < fullIndeces.size(); ++j)
+                {
+                    if (indeces[i] == fullIndeces[j])
+                        {
+                            idxMap.push_back(j);
+                            break;
+                        }
+                    if (j == fullIndeces.size())
+                        {
+                            cout << "ERROR: mapFInder, index on in fullIndeces";
+                            cout << " : " << indeces[i].name << endl;
+                        }
+                }
+        }
+    return idxMap;
+}
+
+/**
+ * getValueOfAsgn
+ * getting the value to the given assignment for indeces
+ *
+ * param asgns is a the given assignments (vector<int>)
+ *
+ * return complex<double> or cx_d
+ */
+cx_d Tensor::getValueOfAsgn(const vector<int> asgns) const {
+    // finding the index of asgn for values
+    int idx = 0;
+    for (int i = 0; i < asgns.size(); ++i)
+        idx += asgns[i]*vecCoeff[i];
+    return values[idx];
 }
 //  LocalWords:  colFinal rowFinal

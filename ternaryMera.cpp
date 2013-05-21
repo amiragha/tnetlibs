@@ -51,10 +51,10 @@ void ternaryMera (Tensor & Hamiltonian0, int max_card){
 
     for (int i = 0; i < 8; ++i)
         {
-            // cout << endl;
-            // cout << i+1 <<"\t";
-            // for (int j = 0; j < 10; ++j)
-            //     cout << DensityMatrix2.values[100*j] << "\t";
+            cout << endl;
+            cout << i+1 <<endl;
+            for (int j = 0; j < 10; ++j)
+                cout << DensityMatrix2.values[100*j] << "\t";
             DensityMatrix2 = ternary_Descending(DensityMatrix2, Unitary2, Isometry2);
         }
     cout << endl;
@@ -113,7 +113,7 @@ void ternaryMera (Tensor & Hamiltonian0, int max_card){
     vector<Index> Uenvc;
     cx_mat U, V;
     vec s;
-    int optN = 4;
+    int optN = 3;
     // iteration loop
     for (int iter = 0; iter < 10; ++iter)
         {
@@ -127,7 +127,10 @@ void ternaryMera (Tensor & Hamiltonian0, int max_card){
                     Ienvr = vector<Index> (Iso_env.indeces.begin(), Iso_env.indeces.begin()+3);
                     Ienvc = vector<Index> (Iso_env.indeces.begin()+3, Iso_env.indeces.begin()+4);
                     svd(U,s,V,Iso_env.toMat(Ienvr, Ienvc));
-                    Isometry0.fromMat(-V*U.submat(span(),span(0,cn0-1)).t(),Ienvr, Ienvc);
+                    Isometry0.fromMat(-(V*U.submat(span(),span(0,cn0-1)).t()).st(),Ienvr, Ienvc);
+                    Hamiltonian1 = ternary_Ascending(Hamiltonian0, Unitary0, Isometry0);
+                    cout << "energy at level 1 is :";
+                    energy(Hamiltonian1,DensityMatrix1);
                 }
             Hamiltonian1 = ternary_Ascending(Hamiltonian0, Unitary0, Isometry0);
             cout << "energy at level 1 is :";
