@@ -54,7 +54,9 @@ int main(int argc, char *argv[])
     //  Tensor Hstar = H;
     // Hstar.conjugate();
     // (H * Hstar).print(1);
-    TernaryMera(ITF, 2, 9, true);
+    TernaryMera test(ITF, 2, 4, true);
+    test.bottom_up(true);
+
 
     return 0;
 

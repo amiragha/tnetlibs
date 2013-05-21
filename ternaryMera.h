@@ -16,7 +16,7 @@
 
 class TernaryMera {
     int numlevels; /// maximum cardinality for Tensor indeces
-    double thresh = 0.0000000001;
+    double thresh = 0.000001;
     std::vector<int> cards; /// holding cardinalities for each level
     std::vector<Tensor> Hamiltonian; /// holding Hamiltonians
     std::vector<Tensor> Isometry; /// holding Isometries
@@ -124,10 +124,11 @@ public:
      * level and DensityMatrix from level+1, changes the Isometry at level
      *
      * param level
+     * param num_update number of consecutive updates
      *
      * return void
      */
-    void iso_update (int level, bool verbose = false);
+    void iso_update (int level, int num_update, bool verbose = false);
 
     /**
      * uni_update
@@ -135,10 +136,11 @@ public:
      * level and DensityMatrix from level+1, changes the Isometry at level
      *
      * param level
+     * param num_update number of consecutive updates
      *
      * return void
      */
-    void uni_update (int level, bool verbose = false);
+    void uni_update (int level, int num_update,  bool verbose = false);
 
     /**
      * bottom_up

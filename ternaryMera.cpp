@@ -430,7 +430,206 @@ void TernaryMera::descend (int level, bool verbose){
  * return Tensor of environment for isometry
  */
 Tensor TernaryMera::iso_env (int level, bool verbose){
+    if (verbose)
+        cout << "calculating the Iso environment for level " << level << endl;
 
+    int uplevel = level + 1;
+    // checking level
+    if (level > numlevels-1)
+        cout << "ERROR: level dos'nt exist" << endl;
+    if (level > numlevels-2)
+        uplevel = level;
+
+    // extracting index information about input Tensors
+    int in = cards[level];
+    int out = cards[uplevel];
+
+    // check for cardinality mismatch TO-DO
+
+    // copy needed matrices
+    Tensor D   = DensityMatrix[uplevel];
+    Tensor H   = Hamiltonian[level];
+    Tensor U   = Unitary[level];
+    Tensor US  = Unitary[level];
+    US.conjugate();
+    Tensor T1  = Isometry[level];
+    Tensor T1S = Isometry[level];
+    T1S.conjugate();
+    Tensor T2  = T1;
+    Tensor T2S = T1S;
+
+    Tensor Temp; // for keeping the temporary results
+
+    // check for cardinality mismatch TO-DO
+
+    // needed inedeces
+    Index o1("o1",in),o2("o2",in),
+        o3("o3",in),o4("o4",out),
+        u1("u1",in),u2("u2",in),
+        u3("u3",in),u4("u4",in),
+        u5("u5",in),u6("u6",in),u7("u7",in),
+        t1("t1",in),t2("t2",in),t3("t3",in),
+        d1("d1",out),d2("d2",out),d3("d3",out);
+
+    vector<Index> output_Idxs =  {o1, o2, o3, o4};
+    vector<Index> h_idcs;
+    vector<Index> d_idcs;
+    vector<Index> u_idcs;
+    vector<Index> us_idcs;
+    vector<Index> t1_idcs;
+    vector<Index> t1s_idcs;
+    vector<Index> t2_idcs;
+    vector<Index> t2s_idcs;
+
+    // there are 6 different Environment Isometry calculations
+    // Left_T1 Center_T1 Right_T1
+    // Left_T2 Center_T2 Right_T2
+
+    // Left_T1
+    // vectors of indeces
+    h_idcs   = {t1, u4, o2, u6};
+    d_idcs   = {o4, d3, d1, d2};
+    u_idcs   = {u6, u5, o3, u3};
+    us_idcs  = {u4, u5, u1, u2};
+    t1s_idcs = {o1, t1, u1, d1};
+    t2_idcs  = {u3, t2, t3, d3};
+    t2s_idcs = {u2, t2, t3, d2};
+    // product-contraction
+    U.reIndex(u_idcs);
+    US.reIndex(us_idcs);
+    H.reIndex(h_idcs);
+    T2.reIndex(t2_idcs);
+    T2S.reIndex(t2s_idcs);
+    D.reIndex(d_idcs);
+    T1S.reIndex(t1s_idcs);
+
+    Tensor Left_T1 = T1S * ((U * H * US) * (T2 * T2S) * D);
+    Left_T1.rearrange(output_Idxs);
+    // cout << "finished" << endl;
+    // T.reIndex(output_Idxs);
+    // (Left_T1 * T).print(1);
+
+    // Center_T1
+    // vectors of indeces
+    h_idcs   = {u4, u5, u6, u7};
+    d_idcs   = {o4, d3, d1, d2};
+    u_idcs   = {u6, u7, o3, u3};
+    us_idcs  = {u4, u5, u1, u2};
+    t1s_idcs = {o1, o2, u1, d1};
+    t2_idcs  = {u3, t1, t2, d3};
+    t2s_idcs = {u2, t1, t2, d2};
+    // product-contraction
+    U.reIndex(u_idcs);
+    US.reIndex(us_idcs);
+    H.reIndex(h_idcs);
+    T2.reIndex(t2_idcs);
+    T2S.reIndex(t2s_idcs);
+    D.reIndex(d_idcs);
+    T1S.reIndex(t1s_idcs);
+
+    Tensor Center_T1 = T1S * ((U * H * US) * (T2 * T2S) * D);
+    Center_T1.rearrange(output_Idxs);
+    // cout << "finished" << endl;
+    // T.reIndex(output_Idxs);
+    // (Center_T1 * T).print(1);
+
+    // Right_T1
+    // vectors of indeces
+    h_idcs   = {u5, t1, u6, t3};
+    d_idcs   = {o4, d3, d1, d2};
+    u_idcs   = {u4, u6, o3, u3};
+    us_idcs  = {u4, u5, u1, u2};
+    t1s_idcs = {o1, o2, u1, d1};
+    t2_idcs  = {u3, t3, t2, d3};
+    t2s_idcs = {u2, t1, t2, d2};
+    // product-contractio
+    U.reIndex(u_idcs);
+    US.reIndex(us_idcs);
+    H.reIndex(h_idcs);
+    T2.reIndex(t2_idcs);
+    T2S.reIndex(t2s_idcs);
+    D.reIndex(d_idcs);
+    T1S.reIndex(t1s_idcs);
+
+    Tensor Right_T1 = T1S * ((U * H * US) * (T2 * T2S) * D);
+    Right_T1.rearrange(output_Idxs);
+    // cout << "finished" << endl;
+    // T.reIndex(output_Idxs);
+    // (Right_T1 * T).print(1);
+
+    // Left_T2
+    // vectors of indeces
+    h_idcs   = {t2, u4, t3, u6};
+    d_idcs   = {d3, o4, d1, d2};
+    u_idcs   = {u6, u5, u3, o1};
+    us_idcs  = {u4, u5, u1, u2};
+    t1_idcs  = {t1, t3, u3, d3};
+    t1s_idcs = {t1, t2, u1, d1};
+    t2s_idcs = {u2, o2, o3, d2};
+    // product-contraction
+    U.reIndex(u_idcs);
+    US.reIndex(us_idcs);
+    H.reIndex(h_idcs);
+    T1.reIndex(t1_idcs);
+    T1S.reIndex(t1s_idcs);
+    D.reIndex(d_idcs);
+    T2S.reIndex(t2s_idcs);
+
+    Tensor Left_T2 = ((T1 * T1S) * (U * H * US) * D) * T2S;
+    Left_T2.rearrange(output_Idxs);
+    // cout << "finished" << endl;
+    // T.reIndex(output_Idxs);
+    // (Left_T2 * T).print(1);
+
+    // Center_T2
+    // vectors of indeces
+    h_idcs   = {u4, u5, u6, u7};
+    d_idcs   = {d3, o4, d1, d2};
+    u_idcs   = {u6, u7, u3, o1};
+    us_idcs  = {u4, u5, u1, u2};
+    t1_idcs  = {t1, t2, u3, d3};
+    t1s_idcs = {t1, t2, u1, d1};
+    t2s_idcs = {u2, o2, o3, d2};
+    // product-contraction
+    U.reIndex(u_idcs);
+    US.reIndex(us_idcs);
+    H.reIndex(h_idcs);
+    T1.reIndex(t1_idcs);
+    T1S.reIndex(t1s_idcs);
+    D.reIndex(d_idcs);
+    T2S.reIndex(t2s_idcs);
+
+    Tensor Center_T2 = ((T1 * T1S) * (U * H * US) * D) * T2S;
+    Center_T2.rearrange(output_Idxs);
+    // cout << "finished" << endl;
+    // T.reIndex(output_Idxs);
+    // (Center_T2 * T).print(1);
+
+    // Right_T2
+    // vectors of indeces
+    h_idcs   = {u5, t3, u6, o2};
+    d_idcs   = {d3, o4, d1, d2};
+    u_idcs   = {u4, u6, u3, o1};
+    us_idcs  = {u4, u5, u1, u2};
+    t1_idcs  = {t1, t2, u3, d3};
+    t1s_idcs = {t1, t2, u1, d1};
+    t2s_idcs = {u2, t3, o3, d2};
+    // product-contraction
+    U.reIndex(u_idcs);
+    US.reIndex(us_idcs);
+    H.reIndex(h_idcs);
+    T1.reIndex(t1_idcs);
+    T1S.reIndex(t1s_idcs);
+    D.reIndex(d_idcs);
+    T2S.reIndex(t2s_idcs);
+
+    Tensor Right_T2 = ((T1 * T1S) * (U * H * US) * D) * T2S;
+    Right_T2.rearrange(output_Idxs);
+    // cout << "finished" << endl;
+    // T.reIndex(output_Idxs);
+    // (T * Right_T2).print(1);
+
+    return (Left_T2 + Center_T2 + Right_T2 + Left_T1 + Center_T1 + Right_T1)/6;
 }
 
 /**
@@ -443,7 +642,118 @@ Tensor TernaryMera::iso_env (int level, bool verbose){
  * return Tensor of environment for unitary
  */
 Tensor TernaryMera::uni_env (int level, bool verbose){
+    if (verbose)
+        cout << "calculating the Uni environment for level " << level << endl;
 
+    int uplevel = level + 1;
+    // checking level
+    if (level > numlevels-1)
+        cout << "ERROR: level dos'nt exist" << endl;
+    if (level > numlevels-2)
+        uplevel = level;
+
+    // extracting index information about input Tensors
+    int in = cards[level];
+    int out = cards[uplevel];
+
+    // check for cardinality mismatch TO-DO
+
+    // copy needed matrices
+    Tensor D   = DensityMatrix[uplevel];
+    Tensor H   = Hamiltonian[level];
+    Tensor US  = Unitary[level];
+    US.conjugate();
+    Tensor T1  = Isometry[level];
+    Tensor T1S = Isometry[level];
+    T1S.conjugate();
+    Tensor T2  = T1;
+    Tensor T2S = T1S;
+
+    Tensor Temp; // for keeping the temporary results
+
+    // needed inedeces
+    Index o1("o1",in),o2("o2",in),
+        o3("o3",in),o4("o4",in),
+        u1("u1",in),u2("u2",in),
+        u3("u3",in),u4("u4",in),
+        t1("t1",in),t2("t2",in),
+        t3("t3",in),t4("t4",in),t5("t5",in),
+        d1("d1",out),d2("d2",out),
+        d3("d3",out),d4("d4",out);
+
+    vector<Index> output_Idxs =  {o1, o2, o3, o4};
+    vector<Index> h_idcs;
+    vector<Index> d_idcs;
+    vector<Index> us_idcs;
+    vector<Index> t1_idcs;
+    vector<Index> t1s_idcs;
+    vector<Index> t2_idcs;
+    vector<Index> t2s_idcs;
+
+    // Left
+    // vector of indeces
+    h_idcs   = {t2, u3, t5, o1};
+    d_idcs   = {d3, d4, d1, d2};
+    us_idcs  = {u3, o2, u1, u2};
+    t1_idcs  = {t1, t5, o3, d3};
+    t1s_idcs = {t1, t2, u1, d1};
+    t2_idcs  = {o4, t3, t4, d4};
+    t2s_idcs = {u2, t3, t4, d2};
+    // product-contraction
+    US.reIndex(us_idcs);
+    H.reIndex(h_idcs);
+    D.reIndex(d_idcs);
+    T2.reIndex(t2_idcs);
+    T2S.reIndex(t2s_idcs);
+    T1.reIndex(t1_idcs);
+    T1S.reIndex(t1s_idcs);
+
+    Tensor Left = (((T1 * T1S) * ((T2 * T2S) * D)) * US) * H;
+    Left.rearrange(output_Idxs);
+
+    // Center
+    // vector of indeces
+    h_idcs   = {u3, u4, o1, o2};
+    d_idcs   = {d3, d4, d1, d2};
+    us_idcs  = {u3, u4, u1, u2};
+    t1_idcs  = {t1, t2, o3, d3};
+    t1s_idcs = {t1, t2, u1, d1};
+    t2_idcs  = {o4, t3, t4, d4};
+    t2s_idcs = {u2, t3, t4, d2};
+    // product-contraction
+    US.reIndex(us_idcs);
+    H.reIndex(h_idcs);
+    D.reIndex(d_idcs);
+    T2.reIndex(t2_idcs);
+    T2S.reIndex(t2s_idcs);
+    T1.reIndex(t1_idcs);
+    T1S.reIndex(t1s_idcs);
+
+    Tensor Center = (T1 * T1S) * ((T2 * T2S) * D) * US * H;
+    Center.rearrange(output_Idxs);
+
+    // Right
+    // vector of indeces
+    h_idcs   = {u3, t3, o2, t5};
+    d_idcs   = {d3, d4, d1, d2};
+    us_idcs  = {o1, u3, u1, u2};
+    t1_idcs  = {t1, t2, o3, d3};
+    t1s_idcs = {t1, t2, u1, d1};
+    t2_idcs  = {o4, t5, t4, d4};
+    t2s_idcs = {u2, t3, t4, d2};
+    // product-contraction
+    US.reIndex(us_idcs);
+    H.reIndex(h_idcs);
+    D.reIndex(d_idcs);
+    T2.reIndex(t2_idcs);
+    T2S.reIndex(t2s_idcs);
+    T1.reIndex(t1_idcs);
+    T1S.reIndex(t1s_idcs);
+
+    Tensor Right = (((T1 * T1S) * ((T2 * T2S) * D)) * US) * H;
+    Right.rearrange(output_Idxs);
+
+    return (Left + Center + Right)/3;
 }
 
 /**
@@ -535,11 +845,35 @@ vector<double> TernaryMera::energy (bool verbose){
  * level and DensityMatrix from level+1, changes the Isometry at level
  *
  * param level
+ * param num_update number of consecutive updates
  *
  * return void
  */
-void TernaryMera::iso_update (int level, bool verbose){
+void TernaryMera::iso_update (int level, int num_update, bool verbose){
+    if (verbose)
+        cout << "updating Isometry of level " << level << endl;
 
+    int uplevel = level+1;
+    if (level > numlevels-2)
+        uplevel = level;
+    vector<Index> Ienvr;
+    vector<Index> Ienvc;
+    Tensor env;
+    cx_mat U, V;
+    vec s;
+    for (int update = 0; update < num_update; ++update) {
+        env = iso_env(level);
+        Ienvr = vector<Index> (env.indeces.begin(), env.indeces.begin()+3);
+        Ienvc = vector<Index> (env.indeces.begin()+3, env.indeces.begin()+4);
+        svd(U,s,V,env.toMat(Ienvr, Ienvc));
+        Isometry[level].fromMat(-(V*U.submat(span(),span(0,cards[uplevel]-1)).t()).st(),Ienvr, Ienvc);
+
+    }
+    // after the update, Hamiltonian at level+1 and DensityMatrix at level
+    // must get updated as well.
+    ascend(level);
+    if (verbose)
+        cout << energy(level+1) << endl;
 }
 
 /**
@@ -548,11 +882,29 @@ void TernaryMera::iso_update (int level, bool verbose){
  * level and DensityMatrix from level+1, changes the Isometry at level
  *
  * param level
+ * param num_update number of consecutive updates
  *
  * return void
  */
-void TernaryMera::uni_update (int level, bool verbose){
+void TernaryMera::uni_update (int level, int num_update, bool verbose){
+    if (verbose)
+        cout << "updating Unitary of level " << level << endl;
 
+    vector<Index> Uenvr;
+    vector<Index> Uenvc;
+    Tensor env;
+    cx_mat U, V;
+    vec s;
+    for (int update = 0; update < num_update; ++update) {
+        env = uni_env(level);
+        Uenvr = vector<Index> (env.indeces.begin(), env.indeces.begin()+2);
+        Uenvc = vector<Index> (env.indeces.begin()+2, env.indeces.begin()+4);
+        svd(U,s,V,env.toMat(Uenvr, Uenvc));
+        Unitary[level].fromMat(-(V*U.t()).st(),Uenvr, Uenvc);
+    }
+    ascend(level);
+    if (verbose)
+        cout << energy(level+1) << endl;
 }
 
 /**
@@ -566,150 +918,18 @@ void TernaryMera::uni_update (int level, bool verbose){
  * return void
  */
 void TernaryMera::bottom_up(bool verbose){
+    if (verbose)
+        cout << "starting one bottom_up step" << endl;
 
+    for (int i = 0; i < 3; ++i) {
+        cout << i << endl;
+        for (int l = 0; l < numlevels; ++l) {
+            iso_update(l,10,verbose);
+            uni_update(l,10,verbose);
+        }
+        arnoldi(verbose);
+        for (int l = numlevels-1; l > 0; --l)
+            descend(l);
+        energy(verbose);
+    }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// void ternaryMera (Tensor & Hamiltonian0, int max_card){
-
-//     // note that max_card must be more than initial c*c*c
-//     // extracting Hamiltonian indeces
-//     vector<Index> h_input = Hamiltonian0.indeces;
-
-//     Tensor Iso_env, Uni_env;
-//     cout << "performing the optimization" << endl;
-//     vector<Index> Ienvr;
-//     vector<Index> Ienvc;
-//     vector<Index> Uenvr;
-//     vector<Index> Uenvc;
-//     cx_mat U, V;
-//     vec s;
-//     int optN = 3;
-//     // iteration loop
-//     for (int iter = 0; iter < 10; ++iter)
-//         {
-//             cout << endl << "starting iteration number : " << iter+1 << " ==> "<< endl;
-//             cout <<         "------------------------------" << endl;
-//             cout << "Level 0 :" << endl;
-
-//             for (int number = 0; number < optN; ++number)
-//                 {
-//                     Iso_env = ternary_Environment_Iso(Hamiltonian0,DensityMatrix1,Unitary0,Isometry0);
-//                     Ienvr = vector<Index> (Iso_env.indeces.begin(), Iso_env.indeces.begin()+3);
-//                     Ienvc = vector<Index> (Iso_env.indeces.begin()+3, Iso_env.indeces.begin()+4);
-//                     svd(U,s,V,Iso_env.toMat(Ienvr, Ienvc));
-//                     Isometry0.fromMat(-(V*U.submat(span(),span(0,cn0-1)).t()).st(),Ienvr, Ienvc);
-//                     Hamiltonian1 = ternary_Ascending(Hamiltonian0, Unitary0, Isometry0);
-//                     cout << "energy at level 1 is :";
-//                     energy(Hamiltonian1,DensityMatrix1);
-//                 }
-//             Hamiltonian1 = ternary_Ascending(Hamiltonian0, Unitary0, Isometry0);
-//             cout << "energy at level 1 is :";
-//             energy(Hamiltonian1,DensityMatrix1);
-
-//             for (int number = 0; number < optN; ++number)
-//                 {
-//                     Uni_env = ternary_Environment_Unit(Hamiltonian0,DensityMatrix1,Unitary0,Isometry0);
-//                     Uenvr = vector<Index> (Uni_env.indeces.begin(), Uni_env.indeces.begin()+2);
-//                     Uenvc = vector<Index> (Uni_env.indeces.begin()+2, Uni_env.indeces.begin()+4);
-//                     svd(U,s,V,Uni_env.toMat(Uenvr, Uenvc));
-//                     Unitary0.fromMat(-(V*U.t()).st(),Uenvr, Uenvc);
-//                 }
-//             Hamiltonian1 = ternary_Ascending(Hamiltonian0, Unitary0, Isometry0);
-//             cout << "energy at level 1 is :";
-//             energy(Hamiltonian1,DensityMatrix1);
-
-//             cout << "Level 1 :" << endl;
-
-//             for (int number = 0; number < optN; ++number)
-//                 {
-
-//                     Iso_env = ternary_Environment_Iso(Hamiltonian1,DensityMatrix2,Unitary1,Isometry1);
-//                     Ienvr = vector<Index> (Iso_env.indeces.begin(), Iso_env.indeces.begin()+3);
-//                     Ienvc = vector<Index> (Iso_env.indeces.begin()+3, Iso_env.indeces.begin()+4);
-//                     svd(U,s,V,Iso_env.toMat(Ienvr, Ienvc));
-//                     Isometry1.fromMat(-(V*U.submat(span(),span(0,cn1-1)).t()).st(),Ienvr, Ienvc);
-//                     //Isometry1.fromMat(-V.submat(span(),span(0,cn1-1))*U.t(),Ienvr, Ienvc);
-//                 }
-//             Hamiltonian2 = ternary_Ascending(Hamiltonian1, Unitary1, Isometry1);
-//             cout << "energy at level 2 is :";
-//             energy(Hamiltonian2,DensityMatrix2);
-
-//             for (int number = 0; number < optN; ++number)
-//                 {
-
-//                     Uni_env = ternary_Environment_Unit(Hamiltonian1,DensityMatrix2,Unitary1,Isometry1);
-//                     Uenvr = vector<Index> (Uni_env.indeces.begin(), Uni_env.indeces.begin()+2);
-//                     Uenvc = vector<Index> (Uni_env.indeces.begin()+2, Uni_env.indeces.begin()+4);
-//                     svd(U,s,V,Uni_env.toMat(Uenvr, Uenvc));
-//                     Unitary1.fromMat(-(V*U.t()).t(),Uenvr, Uenvc);
-//                 }
-
-//             Hamiltonian2 = ternary_Ascending(Hamiltonian1, Unitary1, Isometry1);
-//             cout << "energy at level 2 is :";
-//             energy(Hamiltonian2,DensityMatrix2);
-
-//             cout << "Level 2 :" << endl;
-
-//             for (int number = 0; number < optN; ++number)
-//                 {
-
-//                     Iso_env = ternary_Environment_Iso(Hamiltonian2,DensityMatrix2,Unitary2,Isometry2);
-//                     Ienvr = vector<Index> (Iso_env.indeces.begin(), Iso_env.indeces.begin()+3);
-//                     Ienvc = vector<Index> (Iso_env.indeces.begin()+3, Iso_env.indeces.begin()+4);
-//                     svd(U,s,V,Iso_env.toMat(Ienvr, Ienvc));
-//                     //Isometry2.fromMat(-V.submat(span(),span(0,cn2-1))*U.t(),Ienvr, Ienvc);
-//                     Isometry2.fromMat(-(V*U.submat(span(),span(0,cn2-1)).t()).st(),Ienvr, Ienvc);
-//                 }
-
-//             for (int number = 0; number < optN; ++number)
-//                 {
-
-//                     Uni_env = ternary_Environment_Unit(Hamiltonian2,DensityMatrix2,Unitary2,Isometry2);
-//                     Uenvr = vector<Index> (Uni_env.indeces.begin(), Uni_env.indeces.begin()+2);
-//                     Uenvc = vector<Index> (Uni_env.indeces.begin()+2, Uni_env.indeces.begin()+4);
-//                     svd(U,s,V,Uni_env.toMat(Uenvr, Uenvc));
-//                     Unitary2.fromMat(-(V*U.t()).st(),Uenvr, Uenvc);
-//                 }
-//             Hamiltonian3 = ternary_Ascending(Hamiltonian2, Unitary2, Isometry2);
-
-//             cout << "recalculating Density Matrix" << endl;
-
-
-//             for (int i = 0; i < 8; ++i)
-//                 {
-//                     cout << i+1 <<"\t";
-//                     DensityMatrix2 = ternary_Descending(DensityMatrix2, Unitary2, Isometry2);
-//                 }
-//             cout << endl;
-//             Tensor DensityMatrix1 = ternary_Descending(DensityMatrix2,Unitary1,Isometry1);
-//             Tensor DensityMatrix0 = ternary_Descending(DensityMatrix1,Unitary0,Isometry0);
-
-//             cout << "energy at level 3 is :";
-//             energy(Hamiltonian3,DensityMatrix2);
-//             cout << "energy at level 2 is :";
-//             energy(Hamiltonian2,DensityMatrix2);
-//             cout << "energy at level 1 is :";
-//             energy(Hamiltonian1,DensityMatrix1);
-//             cout << "energy at level 0 is :";
-//             energy(Hamiltonian0,DensityMatrix0);
-
-//         }
-
-// }
-
-
-//  LocalWords:  Isometry
