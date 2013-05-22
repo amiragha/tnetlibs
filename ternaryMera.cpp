@@ -149,7 +149,7 @@ void TernaryMera::give_random_density(){
 
     U1.fromMat(U,dr1,dc1);
     U2.fromMat(U,dr2,dc2);
-    U2.conjugate();
+    U2 = U2.conjugate();
 
     DensityMatrix[numlevels-1] = (U1*U2)/(double)c;
 
@@ -177,11 +177,11 @@ void TernaryMera::ascend (int level, bool verbose){
     // create a copy of all needed Tensors
     Tensor H   = Hamiltonian[level];
     Tensor U   = Unitary[lvl];
-    Tensor US  = Unitary[lvl];
-    US.conjugate();
+    Tensor US  = Unitary[lvl].conjugate();
+    //US.conjugate();
     Tensor T1  = Isometry[lvl];
-    Tensor T1S = Isometry[lvl];
-    T1S.conjugate();
+    Tensor T1S = Isometry[lvl].conjugate();
+    //T1S.conjugate();
     Tensor T2  = T1;
     Tensor T2S = T1S;
 
@@ -313,11 +313,11 @@ void TernaryMera::descend (int level, bool verbose){
     // create a copy of all needed Tensors
     Tensor D   = DensityMatrix[lvl];
     Tensor U   = Unitary[downlvl];
-    Tensor US  = Unitary[downlvl];
-    US.conjugate();
+    Tensor US  = Unitary[downlvl].conjugate();
+    //US.conjugate();
     Tensor T1  = Isometry[downlvl];
-    Tensor T1S = Isometry[downlvl];
-    T1S.conjugate();
+    Tensor T1S = Isometry[downlvl].conjugate();
+    //T1S.conjugate();
     Tensor T2  = T1;
     Tensor T2S = T1S;
 
@@ -450,11 +450,11 @@ Tensor TernaryMera::iso_env (int level, bool verbose){
     Tensor D   = DensityMatrix[uplevel];
     Tensor H   = Hamiltonian[level];
     Tensor U   = Unitary[level];
-    Tensor US  = Unitary[level];
-    US.conjugate();
+    Tensor US  = Unitary[level].conjugate();
+    //US.conjugate();
     Tensor T1  = Isometry[level];
-    Tensor T1S = Isometry[level];
-    T1S.conjugate();
+    Tensor T1S = Isometry[level].conjugate();
+    //T1S.conjugate();
     Tensor T2  = T1;
     Tensor T2S = T1S;
 
@@ -661,11 +661,11 @@ Tensor TernaryMera::uni_env (int level, bool verbose){
     // copy needed matrices
     Tensor D   = DensityMatrix[uplevel];
     Tensor H   = Hamiltonian[level];
-    Tensor US  = Unitary[level];
-    US.conjugate();
+    Tensor US  = Unitary[level].conjugate();
+    //US.conjugate();
     Tensor T1  = Isometry[level];
-    Tensor T1S = Isometry[level];
-    T1S.conjugate();
+    Tensor T1S = Isometry[level].conjugate();
+    //T1S.conjugate();
     Tensor T2  = T1;
     Tensor T2S = T1S;
 

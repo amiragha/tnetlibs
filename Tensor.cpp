@@ -344,13 +344,15 @@ Tensor::prodCards(){
  * taking the complex conjugate of all the element of the Tensor
  *
  * changes the current Tensor
- * return void
+ * return Tensor conjugated of the same Tensor
  */
-void
+Tensor
 Tensor::conjugate (){
     double imaginary;
+    Tensor result(indeces);
     for (int i = 0; i < values.size(); ++i)
-        values[i] = cx_d(values[i].real(), -values[i].imag());
+        result.values.push_back(cx_d(values[i].real(), -values[i].imag()));
+    return result;
 }
 
 /**

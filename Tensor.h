@@ -24,6 +24,7 @@ class Tensor {
     std::vector<Index> indeces;
     std::vector<cx_d > values; /// complex<double> double matrix from armadillo package
     long allCards;
+    int rank; /// rank of the Tensor (number of indeces)
     std::map<std::string, long> coeff;/// mapping from Index to the coefficient
     std::vector<int> vecCoeff; /// vector mapping from index to the coefficient
 
@@ -78,7 +79,15 @@ class Tensor {
     Tensor operator * (const Tensor & other);
     Tensor operator + (const Tensor & other);
     Tensor& operator / (double num);
-    void conjugate();
+
+    /**
+     * conjugate
+     * taking the complex conjugate of all the element of the Tensor
+     *
+     * changes the current Tensor
+     * return Tensor conjugated of the same Tensor
+     */
+    Tensor conjugate();
     void reIndex(const std::vector<Index> & newIndeces);
     void rearrange(const std::vector<Index> & newOrder);
     void printIndeces() const;
