@@ -359,13 +359,26 @@ Tensor::conjugate (){
  * reIndex
  * changing the Indeces of the Tensor while leaving the elements unchanged
  * this correspond to just renaming the Indeces.
+ * note: overloaded to receive 4 input Indeces for ease of use with rank 4
+ * indeces which happens to occur in our problem
+ * changes the Tensor indeces
+ *
+ * param vector<Index> & new newIndeces or 4 Indexes
+ *
+ * return void
  */
+void
+Tensor::reIndex(const Index a1, const Index a2, const Index a3, const Index a4) {
+    // calling the original function
+    reIndex(mkIdxSet(a1,a2,a3,a4));
+}
 void
 Tensor::reIndex(const vector<Index> & newIndeces){
     // check for sanity of input (TO-DO)
     indeces = newIndeces;
     allCards = prodCards();
 }
+
 
 /**
  * rearrange

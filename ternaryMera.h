@@ -16,7 +16,7 @@
 
 class TernaryMera {
     int numlevels; /// maximum cardinality for Tensor indeces
-    double thresh = 0.000001;
+    double thresh;
     std::vector<int> cards; /// holding cardinalities for each level
     std::vector<Tensor> Hamiltonian; /// holding Hamiltonians
     std::vector<Tensor> Isometry; /// holding Isometries

@@ -10,6 +10,8 @@ TernaryMera::TernaryMera(cx_mat & Hmat, int icard, int fcard, bool verbose) {
     if (verbose)
         cout << "Starting intialization of TernaryMera : " << endl;
 
+    // setting threshold for double comparison
+    thresh = 0.0000001;
     // level cardinalities
     int c = icard;
     while (c < fcard) {
@@ -31,10 +33,10 @@ TernaryMera::TernaryMera(cx_mat & Hmat, int icard, int fcard, bool verbose) {
 
     // creating starting Hamiltoninan from matrix
     Index h1("h1",icard), h2("h2",icard), h3("h3",icard), h4("h4",icard);
-    vector<Index> hr = {h1, h2};
-    vector<Index> hc = {h3, h4};
+    // vector<Index> hr = {h1, h2};
+    // vector<Index> hc = {h3, h4};
     Tensor H;
-    H.fromMat(Hmat,hr,hc);
+    H.fromMat(Hmat, mkIdxSet(h1, h2), mkIdxSet(h3, h4));
     Hamiltonian.push_back(H);
 
     // ascending the Hamiltonian to all levels
@@ -93,12 +95,12 @@ TernaryMera::give_random_UniIso(int level){
         t1("t1",in),t2("t2",in),t3("t3",in),t4("t4",out);
 
     // defining the Unitary and Isometry
-    vector<Index> u_idcs;
-    vector<Index> u_ridx;
-    vector<Index> u_cidx;
-    vector<Index> t_idcs;
-    vector<Index> t_ridx;
-    vector<Index> t_cidx;
+    // vector<Index> u_idcs;
+    // vector<Index> u_ridx;
+    // vector<Index> u_cidx;
+    // vector<Index> t_idcs;
+    // vector<Index> t_ridx;
+    // vector<Index> t_cidx;
 
     // using singular value decomposition
     cx_mat X = randu<cx_mat>(in*in*in,in*in);
@@ -106,18 +108,16 @@ TernaryMera::give_random_UniIso(int level){
     vec s;
     svd(Umat,s,Vmat,X);
 
-    u_idcs = {u1 ,u2, u3, u4};
-    u_ridx = {u1, u2};
-    u_cidx = {u3, u4};
-    t_idcs = {t1 ,t2, t3, t4};
-    t_ridx = {t1, t2, t3};
-    t_cidx = {t4};
+    // u_idcs = {u1 ,u2, u3, u4};
+    // u_ridx = {u1, u2};
+    // u_cidx = {u3, u4};
+    // t_idcs = {t1 ,t2, t3, t4};
+    // t_ridx = {t1, t2, t3};
+    // t_cidx = {t4};
 
     Tensor U, I;
-    U.indeces = u_idcs;
-    U.fromMat(Vmat,u_ridx,u_cidx);
-    I.indeces = t_idcs;
-    I.fromMat(Umat,t_ridx,t_cidx);
+    U.fromMat(Vmat, mkIdxSet(u1,u2), mkIdxSet(u3,u4));
+    I.fromMat(Umat, mkIdxSet(t1,t2,t3), mkIdxSet(t4));
     Unitary.push_back(U);
     Isometry.push_back(I);
 
@@ -133,22 +133,21 @@ void TernaryMera::give_random_density(){
 
     int c = cards[numlevels-1];
     Index d1("d1",c),d2("d2",c),d3("d3",c),d4("d4",c);
-    vector<Index> d_idcs = {d1 ,d2, d3, d4};
-    vector<Index> dr1  = {d1};
-    vector<Index> dc1  = {d2};
-    vector<Index> dr2  = {d3};
-    vector<Index> dc2  = {d4};
-    vector<Index> dvec1 = {d1,d2};
-    vector<Index> dvec2 = {d3,d4};
+    // vector<Index> d_idcs = {d1 ,d2, d3, d4};
+    // vector<Index> dr1  = {d1};
+    // vector<Index> dc1  = {d2};
+    // vector<Index> dr2  = {d3};
+    // vector<Index> dc2  = {d4};
+    // vector<Index> dvec1 = {d1,d2};
+    // vector<Index> dvec2 = {d3,d4};
 
     cx_mat X = randu<cx_mat>(c,1);
     cx_mat U, V;
     vec s;
     svd(U,s,V,X);
-    Tensor U1(dvec1), U2(dvec2);
-
-    U1.fromMat(U,dr1,dc1);
-    U2.fromMat(U,dr2,dc2);
+    Tensor U1, U2;
+    U1.fromMat(U,mkIdxSet(d1), mkIdxSet(d2));
+    U2.fromMat(U,mkIdxSet(d3), mkIdxSet(d4));
     U2 = U2.conjugate();
 
     DensityMatrix[numlevels-1] = (U1*U2)/(double)c;
@@ -204,77 +203,45 @@ void TernaryMera::ascend (int level, bool verbose){
         t5("t5",in),t6("t6",in),
         t7("t7",in),t8("t8",in),t9("t1",in);
 
-    vector<Index> h_idcs;
-    vector<Index> u_idcs;
-    vector<Index> us_idcs;
-    vector<Index> t1_idcs;
-    vector<Index> t1s_idcs;
-    vector<Index> t2_idcs;
-    vector<Index> t2s_idcs;
-
     // there are 3 different ascending Left Right Center
 
     //Left
     // vectors of indeces of Left
-    h_idcs   = {t2, u1, t7, u3};
-    u_idcs   = {u3, u2, t8, t9};
-    us_idcs  = {u1, u2, t3, t4};
-    t1_idcs  = {t1, t7, t8, o3};
-    t1s_idcs = {t1, t2, t3, o1};
-    t2_idcs  = {t9, t5, t6, o4};
-    t2s_idcs = {t4, t5, t6, o2};
+    H.reIndex(t2, u1, t7, u3);
+    U.reIndex(u3, u2, t8, t9);
+    US.reIndex(u1, u2, t3, t4);
+    T1.reIndex(t1, t7, t8, o3);
+    T1S.reIndex(t1, t2, t3, o1);
+    T2.reIndex(t9, t5, t6, o4);
+    T2S.reIndex(t4, t5, t6, o2);
     // product-contraction
-    T1S.reIndex(t1s_idcs);
-    T1.reIndex(t1_idcs);
-    H.reIndex(h_idcs);
-    U.reIndex(u_idcs);
-    US.reIndex(us_idcs);
-    T2S.reIndex(t2s_idcs);
-    T2.reIndex(t2_idcs);
-
     Tensor Left = ((T1S * T1) * ((H * U) * US)) * (T2S * T2);
 
     //Center
     // vectors of indeces of Center
-    h_idcs   = {u1, u2, u3, u4};
-    u_idcs   = {u3, u4, t7, t8};
-    us_idcs  = {u1, u2, t3, t4};
-    t1_idcs  = {t1, t2, t7, o3};
-    t1s_idcs = {t1, t2, t3, o1};
-    t2_idcs  = {t8, t5, t6, o4};
-    t2s_idcs = {t4, t5, t6, o2};
+    H.reIndex(u1, u2, u3, u4);
+    U.reIndex(u3, u4, t7, t8);
+    US.reIndex(u1, u2, t3, t4);
+    T1.reIndex(t1, t2, t7, o3);
+    T1S.reIndex(t1, t2, t3, o1);
+    T2.reIndex(t8, t5, t6, o4);
+    T2S.reIndex(t4, t5, t6, o2);
     // product-contraction
-    T1S.reIndex(t1s_idcs);
-    T1.reIndex(t1_idcs);
-    H.reIndex(h_idcs);
-    U.reIndex(u_idcs);
-    US.reIndex(us_idcs);
-    T2S.reIndex(t2s_idcs);
-    T2.reIndex(t2_idcs);
-
     Tensor Center = ((T1S * T1) * ((H * U) * US)) * (T2S * T2);
 
     //Right
     // vectors of indeces of Right
-    h_idcs   = {u2, t5, u3, t9};
-    u_idcs   = {u1, u3, t7, t8};
-    us_idcs  = {u1, u2, t3, t4};
-    t1_idcs  = {t1, t2, t7, o3};
-    t1s_idcs = {t1, t2, t3, o1};
-    t2_idcs  = {t8, t9, t6, o4};
-    t2s_idcs = {t4, t5, t6, o2};
+    H.reIndex(u2, t5, u3, t9);
+    U.reIndex(u1, u3, t7, t8);
+    US.reIndex(u1, u2, t3, t4);
+    T1.reIndex(t1, t2, t7, o3);
+    T1S.reIndex(t1, t2, t3, o1);
+    T2.reIndex(t8, t9, t6, o4);
+    T2S.reIndex(t4, t5, t6, o2);
     // product-contraction
-    T1S.reIndex(t1s_idcs);
-    T1.reIndex(t1_idcs);
-    H.reIndex(h_idcs);
-    U.reIndex(u_idcs);
-    US.reIndex(us_idcs);
-    T2S.reIndex(t2s_idcs);
-    T2.reIndex(t2_idcs);
-
     Tensor Right = ((T1S * T1) * ((H * U) * US)) * (T2S * T2);
 
-    vector<Index> output_Idxs =  {o1, o2, o3, o4};
+    vector<Index> output_Idxs =  mkIdxSet(o1, o2, o3, o4);
 
     Temp = ((Right + Center) + Left)/3;
     Temp.rearrange(output_Idxs);
@@ -314,10 +281,8 @@ void TernaryMera::descend (int level, bool verbose){
     Tensor D   = DensityMatrix[lvl];
     Tensor U   = Unitary[downlvl];
     Tensor US  = Unitary[downlvl].conjugate();
-    //US.conjugate();
     Tensor T1  = Isometry[downlvl];
     Tensor T1S = Isometry[downlvl].conjugate();
-    //T1S.conjugate();
     Tensor T2  = T1;
     Tensor T2S = T1S;
 
@@ -337,78 +302,45 @@ void TernaryMera::descend (int level, bool verbose){
         i1("i1",in),i2("i2",in),
         i3("i3",in),i4("i4",in);
 
-    vector<Index> output_Idxs = {o1, o2, o3, o4};
-
-    vector<Index> d_idcs;
-    vector<Index> u_idcs;
-    vector<Index> us_idcs;
-    vector<Index> t1_idcs;
-    vector<Index> t1s_idcs;
-    vector<Index> t2_idcs;
-    vector<Index> t2s_idcs;
-
+    vector<Index> output_Idxs = mkIdxSet(o1, o2, o3, o4);
 
     // there are 3 different ascending Left Right Center
 
     //Left
     // vectors of indeces of Left
-    d_idcs   = {i1, i2, i3, i4};
-    u_idcs   = {o2, u1, u2, u3};
-    us_idcs  = {o4, u1, u4, u5};
-    t1_idcs  = {t1, o1, u2, i1};
-    t1s_idcs = {t1, o3, u4, i3};
-    t2_idcs  = {u3, t3, t2, i2};
-    t2s_idcs = {u5, t3, t2, i4};
+    D.reIndex(i1, i2, i3, i4);
+    U.reIndex(o2, u1, u2, u3);
+    US.reIndex(o4, u1, u4, u5);
+    T1.reIndex(t1, o1, u2, i1);
+    T1S.reIndex(t1, o3, u4, i3);
+    T2.reIndex(u3, t3, t2, i2);
+    T2S.reIndex(u5, t3, t2, i4);
     // product-contraction
-    T2.reIndex(t2_idcs);
-    T2S.reIndex(t2s_idcs);
-    D.reIndex(d_idcs);
-    U.reIndex(u_idcs);
-    US.reIndex(us_idcs);
-    T1.reIndex(t1_idcs);
-    T1S.reIndex(t1s_idcs);
-
     Tensor Left = (T1 * T1S) * ((T2 * T2S) * D) * (U * US);
     Left.rearrange(output_Idxs);
 
     //Center
     // vectors of indeces of Center
-    d_idcs   = {i1, i2, i3, i4};
-    u_idcs   = {o1, o2, u1, u2};
-    us_idcs  = {o3, o4, u3, u4};
-    t1_idcs  = {t2, t1, u1, i1};
-    t1s_idcs = {t2, t1, u3, i3};
-    t2_idcs  = {u2, t4, t3, i2};
-    t2s_idcs = {u4, t4, t3, i4};
+    D.reIndex(i1, i2, i3, i4);
+    U.reIndex(o1, o2, u1, u2);
+    US.reIndex(o3, o4, u3, u4);
+    T1.reIndex(t2, t1, u1, i1);
+    T1S.reIndex(t2, t1, u3, i3);
+    T2.reIndex(u2, t4, t3, i2);
+    T2S.reIndex(u4, t4, t3, i4);
     // product-contraction
-    T2.reIndex(t2_idcs);
-    T2S.reIndex(t2s_idcs);
-    D.reIndex(d_idcs);
-    U.reIndex(u_idcs);
-    US.reIndex(us_idcs);
-    T1.reIndex(t1_idcs);
-    T1S.reIndex(t1s_idcs);
-
     Tensor Center = U * ((T1 * T1S) * ((T2 * T2S) * D)) * US;
 
     //Right
     // vectors of indeces of Right
-    d_idcs   = {i1, i2, i3, i4};
-    u_idcs   = {u1, o1, u2, u3};
-    us_idcs  = {u1, o3, u4, u5};
-    t1_idcs  = {t2, t1, u2, i1};
-    t1s_idcs = {t2, t1, u4, i3};
-    t2_idcs  = {u3, o2, t3, i2};
-    t2s_idcs = {u5, o4, t3, i4};
+    D.reIndex(i1, i2, i3, i4);
+    U.reIndex(u1, o1, u2, u3);
+    US.reIndex(u1, o3, u4, u5);
+    T1.reIndex(t2, t1, u2, i1);
+    T1S.reIndex(t2, t1, u4, i3);
+    T2.reIndex(u3, o2, t3, i2);
+    T2S.reIndex(u5, o4, t3, i4);
     // product-contraction
-    T2.reIndex(t2_idcs);
-    T2S.reIndex(t2s_idcs);
-    D.reIndex(d_idcs);
-    U.reIndex(u_idcs);
-    US.reIndex(us_idcs);
-    T1.reIndex(t1_idcs);
-    T1S.reIndex(t1s_idcs);
-
     Tensor Right = (T1 * T1S) * ((T2 * T2S) * D) * (U * US);
     Right.rearrange(output_Idxs);
 
@@ -451,10 +383,8 @@ Tensor TernaryMera::iso_env (int level, bool verbose){
     Tensor H   = Hamiltonian[level];
     Tensor U   = Unitary[level];
     Tensor US  = Unitary[level].conjugate();
-    //US.conjugate();
     Tensor T1  = Isometry[level];
     Tensor T1S = Isometry[level].conjugate();
-    //T1S.conjugate();
     Tensor T2  = T1;
     Tensor T2S = T1S;
 
@@ -471,15 +401,7 @@ Tensor TernaryMera::iso_env (int level, bool verbose){
         t1("t1",in),t2("t2",in),t3("t3",in),
         d1("d1",out),d2("d2",out),d3("d3",out);
 
-    vector<Index> output_Idxs =  {o1, o2, o3, o4};
-    vector<Index> h_idcs;
-    vector<Index> d_idcs;
-    vector<Index> u_idcs;
-    vector<Index> us_idcs;
-    vector<Index> t1_idcs;
-    vector<Index> t1s_idcs;
-    vector<Index> t2_idcs;
-    vector<Index> t2s_idcs;
+    vector<Index> output_Idxs =  mkIdxSet(o1, o2, o3, o4);
 
     // there are 6 different Environment Isometry calculations
     // Left_T1 Center_T1 Right_T1
@@ -487,22 +409,14 @@ Tensor TernaryMera::iso_env (int level, bool verbose){
 
     // Left_T1
     // vectors of indeces
-    h_idcs   = {t1, u4, o2, u6};
-    d_idcs   = {o4, d3, d1, d2};
-    u_idcs   = {u6, u5, o3, u3};
-    us_idcs  = {u4, u5, u1, u2};
-    t1s_idcs = {o1, t1, u1, d1};
-    t2_idcs  = {u3, t2, t3, d3};
-    t2s_idcs = {u2, t2, t3, d2};
+    H.reIndex(t1, u4, o2, u6);
+    D.reIndex(o4, d3, d1, d2);
+    U.reIndex(u6, u5, o3, u3);
+    US.reIndex(u4, u5, u1, u2);
+    T1S.reIndex(o1, t1, u1, d1);
+    T2.reIndex(u3, t2, t3, d3);
+    T2S.reIndex(u2, t2, t3, d2);
     // product-contraction
-    U.reIndex(u_idcs);
-    US.reIndex(us_idcs);
-    H.reIndex(h_idcs);
-    T2.reIndex(t2_idcs);
-    T2S.reIndex(t2s_idcs);
-    D.reIndex(d_idcs);
-    T1S.reIndex(t1s_idcs);
-
     Tensor Left_T1 = T1S * ((U * H * US) * (T2 * T2S) * D);
     Left_T1.rearrange(output_Idxs);
     // cout << "finished" << endl;
@@ -511,22 +425,14 @@ Tensor TernaryMera::iso_env (int level, bool verbose){
 
     // Center_T1
     // vectors of indeces
-    h_idcs   = {u4, u5, u6, u7};
-    d_idcs   = {o4, d3, d1, d2};
-    u_idcs   = {u6, u7, o3, u3};
-    us_idcs  = {u4, u5, u1, u2};
-    t1s_idcs = {o1, o2, u1, d1};
-    t2_idcs  = {u3, t1, t2, d3};
-    t2s_idcs = {u2, t1, t2, d2};
+    H.reIndex(u4, u5, u6, u7);
+    D.reIndex(o4, d3, d1, d2);
+    U.reIndex(u6, u7, o3, u3);
+    US.reIndex(u4, u5, u1, u2);
+    T1S.reIndex(o1, o2, u1, d1);
+    T2.reIndex(u3, t1, t2, d3);
+    T2S.reIndex(u2, t1, t2, d2);
     // product-contraction
-    U.reIndex(u_idcs);
-    US.reIndex(us_idcs);
-    H.reIndex(h_idcs);
-    T2.reIndex(t2_idcs);
-    T2S.reIndex(t2s_idcs);
-    D.reIndex(d_idcs);
-    T1S.reIndex(t1s_idcs);
-
     Tensor Center_T1 = T1S * ((U * H * US) * (T2 * T2S) * D);
     Center_T1.rearrange(output_Idxs);
     // cout << "finished" << endl;
@@ -535,22 +441,14 @@ Tensor TernaryMera::iso_env (int level, bool verbose){
 
     // Right_T1
     // vectors of indeces
-    h_idcs   = {u5, t1, u6, t3};
-    d_idcs   = {o4, d3, d1, d2};
-    u_idcs   = {u4, u6, o3, u3};
-    us_idcs  = {u4, u5, u1, u2};
-    t1s_idcs = {o1, o2, u1, d1};
-    t2_idcs  = {u3, t3, t2, d3};
-    t2s_idcs = {u2, t1, t2, d2};
+    H.reIndex(u5, t1, u6, t3);
+    D.reIndex(o4, d3, d1, d2);
+    U.reIndex(u4, u6, o3, u3);
+    US.reIndex(u4, u5, u1, u2);
+    T1S.reIndex(o1, o2, u1, d1);
+    T2.reIndex(u3, t3, t2, d3);
+    T2S.reIndex(u2, t1, t2, d2);
     // product-contractio
-    U.reIndex(u_idcs);
-    US.reIndex(us_idcs);
-    H.reIndex(h_idcs);
-    T2.reIndex(t2_idcs);
-    T2S.reIndex(t2s_idcs);
-    D.reIndex(d_idcs);
-    T1S.reIndex(t1s_idcs);
-
     Tensor Right_T1 = T1S * ((U * H * US) * (T2 * T2S) * D);
     Right_T1.rearrange(output_Idxs);
     // cout << "finished" << endl;
@@ -559,22 +457,14 @@ Tensor TernaryMera::iso_env (int level, bool verbose){
 
     // Left_T2
     // vectors of indeces
-    h_idcs   = {t2, u4, t3, u6};
-    d_idcs   = {d3, o4, d1, d2};
-    u_idcs   = {u6, u5, u3, o1};
-    us_idcs  = {u4, u5, u1, u2};
-    t1_idcs  = {t1, t3, u3, d3};
-    t1s_idcs = {t1, t2, u1, d1};
-    t2s_idcs = {u2, o2, o3, d2};
+    H.reIndex(t2, u4, t3, u6);
+    D.reIndex(d3, o4, d1, d2);
+    U.reIndex(u6, u5, u3, o1);
+    US.reIndex(u4, u5, u1, u2);
+    T1.reIndex(t1, t3, u3, d3);
+    T1S.reIndex(t1, t2, u1, d1);
+    T2S.reIndex(u2, o2, o3, d2);
     // product-contraction
-    U.reIndex(u_idcs);
-    US.reIndex(us_idcs);
-    H.reIndex(h_idcs);
-    T1.reIndex(t1_idcs);
-    T1S.reIndex(t1s_idcs);
-    D.reIndex(d_idcs);
-    T2S.reIndex(t2s_idcs);
-
     Tensor Left_T2 = ((T1 * T1S) * (U * H * US) * D) * T2S;
     Left_T2.rearrange(output_Idxs);
     // cout << "finished" << endl;
@@ -583,22 +473,14 @@ Tensor TernaryMera::iso_env (int level, bool verbose){
 
     // Center_T2
     // vectors of indeces
-    h_idcs   = {u4, u5, u6, u7};
-    d_idcs   = {d3, o4, d1, d2};
-    u_idcs   = {u6, u7, u3, o1};
-    us_idcs  = {u4, u5, u1, u2};
-    t1_idcs  = {t1, t2, u3, d3};
-    t1s_idcs = {t1, t2, u1, d1};
-    t2s_idcs = {u2, o2, o3, d2};
+    H.reIndex(u4, u5, u6, u7);
+    D.reIndex(d3, o4, d1, d2);
+    U.reIndex(u6, u7, u3, o1);
+    US.reIndex(u4, u5, u1, u2);
+    T1.reIndex(t1, t2, u3, d3);
+    T1S.reIndex(t1, t2, u1, d1);
+    T2S.reIndex(u2, o2, o3, d2);
     // product-contraction
-    U.reIndex(u_idcs);
-    US.reIndex(us_idcs);
-    H.reIndex(h_idcs);
-    T1.reIndex(t1_idcs);
-    T1S.reIndex(t1s_idcs);
-    D.reIndex(d_idcs);
-    T2S.reIndex(t2s_idcs);
-
     Tensor Center_T2 = ((T1 * T1S) * (U * H * US) * D) * T2S;
     Center_T2.rearrange(output_Idxs);
     // cout << "finished" << endl;
@@ -607,22 +489,14 @@ Tensor TernaryMera::iso_env (int level, bool verbose){
 
     // Right_T2
     // vectors of indeces
-    h_idcs   = {u5, t3, u6, o2};
-    d_idcs   = {d3, o4, d1, d2};
-    u_idcs   = {u4, u6, u3, o1};
-    us_idcs  = {u4, u5, u1, u2};
-    t1_idcs  = {t1, t2, u3, d3};
-    t1s_idcs = {t1, t2, u1, d1};
-    t2s_idcs = {u2, t3, o3, d2};
+    H.reIndex(u5, t3, u6, o2);
+    D.reIndex(d3, o4, d1, d2);
+    U.reIndex(u4, u6, u3, o1);
+    US.reIndex(u4, u5, u1, u2);
+    T1.reIndex(t1, t2, u3, d3);
+    T1S.reIndex(t1, t2, u1, d1);
+    T2S.reIndex(u2, t3, o3, d2);
     // product-contraction
-    U.reIndex(u_idcs);
-    US.reIndex(us_idcs);
-    H.reIndex(h_idcs);
-    T1.reIndex(t1_idcs);
-    T1S.reIndex(t1s_idcs);
-    D.reIndex(d_idcs);
-    T2S.reIndex(t2s_idcs);
-
     Tensor Right_T2 = ((T1 * T1S) * (U * H * US) * D) * T2S;
     Right_T2.rearrange(output_Idxs);
     // cout << "finished" << endl;
@@ -662,10 +536,8 @@ Tensor TernaryMera::uni_env (int level, bool verbose){
     Tensor D   = DensityMatrix[uplevel];
     Tensor H   = Hamiltonian[level];
     Tensor US  = Unitary[level].conjugate();
-    //US.conjugate();
     Tensor T1  = Isometry[level];
     Tensor T1S = Isometry[level].conjugate();
-    //T1S.conjugate();
     Tensor T2  = T1;
     Tensor T2S = T1S;
 
@@ -681,75 +553,44 @@ Tensor TernaryMera::uni_env (int level, bool verbose){
         d1("d1",out),d2("d2",out),
         d3("d3",out),d4("d4",out);
 
-    vector<Index> output_Idxs =  {o1, o2, o3, o4};
-    vector<Index> h_idcs;
-    vector<Index> d_idcs;
-    vector<Index> us_idcs;
-    vector<Index> t1_idcs;
-    vector<Index> t1s_idcs;
-    vector<Index> t2_idcs;
-    vector<Index> t2s_idcs;
+    vector<Index> output_Idxs =  mkIdxSet(o1, o2, o3, o4);
 
     // Left
     // vector of indeces
-    h_idcs   = {t2, u3, t5, o1};
-    d_idcs   = {d3, d4, d1, d2};
-    us_idcs  = {u3, o2, u1, u2};
-    t1_idcs  = {t1, t5, o3, d3};
-    t1s_idcs = {t1, t2, u1, d1};
-    t2_idcs  = {o4, t3, t4, d4};
-    t2s_idcs = {u2, t3, t4, d2};
+    H.reIndex(t2, u3, t5, o1);
+    D.reIndex(d3, d4, d1, d2);
+    US.reIndex(u3, o2, u1, u2);
+    T1.reIndex(t1, t5, o3, d3);
+    T1S.reIndex(t1, t2, u1, d1);
+    T2.reIndex(o4, t3, t4, d4);
+    T2S.reIndex(u2, t3, t4, d2);
     // product-contraction
-    US.reIndex(us_idcs);
-    H.reIndex(h_idcs);
-    D.reIndex(d_idcs);
-    T2.reIndex(t2_idcs);
-    T2S.reIndex(t2s_idcs);
-    T1.reIndex(t1_idcs);
-    T1S.reIndex(t1s_idcs);
-
     Tensor Left = (((T1 * T1S) * ((T2 * T2S) * D)) * US) * H;
     Left.rearrange(output_Idxs);
 
     // Center
     // vector of indeces
-    h_idcs   = {u3, u4, o1, o2};
-    d_idcs   = {d3, d4, d1, d2};
-    us_idcs  = {u3, u4, u1, u2};
-    t1_idcs  = {t1, t2, o3, d3};
-    t1s_idcs = {t1, t2, u1, d1};
-    t2_idcs  = {o4, t3, t4, d4};
-    t2s_idcs = {u2, t3, t4, d2};
+    H.reIndex(u3, u4, o1, o2);
+    D.reIndex(d3, d4, d1, d2);
+    US.reIndex(u3, u4, u1, u2);
+    T1.reIndex(t1, t2, o3, d3);
+    T1S.reIndex(t1, t2, u1, d1);
+    T2.reIndex(o4, t3, t4, d4);
+    T2S.reIndex(u2, t3, t4, d2);
     // product-contraction
-    US.reIndex(us_idcs);
-    H.reIndex(h_idcs);
-    D.reIndex(d_idcs);
-    T2.reIndex(t2_idcs);
-    T2S.reIndex(t2s_idcs);
-    T1.reIndex(t1_idcs);
-    T1S.reIndex(t1s_idcs);
-
     Tensor Center = (T1 * T1S) * ((T2 * T2S) * D) * US * H;
     Center.rearrange(output_Idxs);
 
     // Right
     // vector of indeces
-    h_idcs   = {u3, t3, o2, t5};
-    d_idcs   = {d3, d4, d1, d2};
-    us_idcs  = {o1, u3, u1, u2};
-    t1_idcs  = {t1, t2, o3, d3};
-    t1s_idcs = {t1, t2, u1, d1};
-    t2_idcs  = {o4, t5, t4, d4};
-    t2s_idcs = {u2, t3, t4, d2};
+    H.reIndex(u3, t3, o2, t5);
+    D.reIndex(d3, d4, d1, d2);
+    US.reIndex(o1, u3, u1, u2);
+    T1.reIndex(t1, t2, o3, d3);
+    T1S.reIndex(t1, t2, u1, d1);
+    T2.reIndex(o4, t5, t4, d4);
+    T2S.reIndex(u2, t3, t4, d2);
     // product-contraction
-    US.reIndex(us_idcs);
-    H.reIndex(h_idcs);
-    D.reIndex(d_idcs);
-    T2.reIndex(t2_idcs);
-    T2S.reIndex(t2s_idcs);
-    T1.reIndex(t1_idcs);
-    T1S.reIndex(t1s_idcs);
-
     Tensor Right = (((T1 * T1S) * ((T2 * T2S) * D)) * US) * H;
     Right.rearrange(output_Idxs);
 
@@ -797,10 +638,8 @@ double TernaryMera::energy (int level){
     Tensor D = DensityMatrix[lvl];
     // reIndexing for the correct contraction
     Index e1("e1",c),e2("e2",c),e3("e3",c),e4("e4",c);
-    vector<Index> enIdx = {e1,e2,e3,e4};
-    vector<Index> enIdx2 = {e3,e4,e1,e2};
-    H.reIndex(enIdx);
-    D.reIndex(enIdx2);
+    H.reIndex(e1,e2,e3,e4);
+    D.reIndex(e3,e4,e1,e2);
     Tensor energy = H * D;
 
     // changing the indeces back to initial indeces

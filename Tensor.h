@@ -88,6 +88,21 @@ class Tensor {
      * return Tensor conjugated of the same Tensor
      */
     Tensor conjugate();
+
+    /**
+     * reIndex
+     * changing the Indeces of the Tensor while leaving the elements unchanged
+     * this correspond to just renaming the Indeces.
+     * note: overloaded to receive 4 input Indeces for ease of use with rank 4
+     * indeces which happens to occur in our problem
+     * changes the Tensor indeces
+     *
+     * param vector<Index> & new newIndeces or 4 Indexes
+     *
+     * return void
+     */
+    void reIndex(const Index a1, const Index a2,
+                 const Index a3, const Index a4);
     void reIndex(const std::vector<Index> & newIndeces);
     void rearrange(const std::vector<Index> & newOrder);
     void printIndeces() const;

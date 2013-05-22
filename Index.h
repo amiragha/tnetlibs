@@ -14,11 +14,11 @@
  * each Index have string name and a long cardinality
  */
 class Index {
- public:
+public:
     std::string name;
     long card;
 
- Index(std::string s, int c) : name(s), card(c){};
+    Index(std::string s, int c) : name(s), card(c){};
     ~Index(){};
 
     void change_card (int newCard);
@@ -26,21 +26,20 @@ class Index {
     bool operator < (const Index & other);
 };
 
-class IndexSet {
- public:
-    std::vector<Index> idxSet;
-    std::map<std::string, long> coeff;
-
-    long prodCards;
-
-    IndexSet (Index one);
-    IndexSet (Index one, Index two);
-    IndexSet (Index one, Index two, Index three);
-    IndexSet (Index one, Index two, Index three, Index four);
-    IndexSet (std::vector<Index> & idxs);
-    ~IndexSet();
-
-    void createMap();
-};
+/**
+ * mkIdxSet
+ * makes a vector of Index out of some number of Indexes
+ * overloaded for different number of arguments
+ *
+ * param Index (some number)
+ *
+ * return vector<Index>
+ */
+std::vector<Index> mkIdxSet (const Index one);
+std::vector<Index> mkIdxSet (const Index one, const Index two);
+std::vector<Index> mkIdxSet (const Index one, const Index two,
+                             const Index three);
+std::vector<Index> mkIdxSet (const Index one, const Index two,
+                             const Index three, const Index four);
 
 #endif /* _INDEX_H_ */

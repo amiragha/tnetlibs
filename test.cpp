@@ -34,26 +34,7 @@ int main(int argc, char *argv[])
     // making all of the energy eigenvalues negative
     ITF = ITF - max(eigenvals)*I4;
     cout << ITF<<endl;
-    vector<Index> vh = {b,c,d,f};
-    vector<Index> vhr = {b,c};
-    vector<Index> vhc = {d,f};
 
-    Tensor H(vh);
-    H.fromMat(ITF,vhr,vhc);
-    // H.fromMat(I4,vhr,vhc);
-
-    // testing
-    // vector<Index> vvv = {a,b,c};
-    // vector<Index> vvr = {a};
-    // vector<Index> vvc = {b,c};
-
-    // Tensor T(vvv);
-    // cx_mat A = randu<cx_mat>(3,4);
-    // T.fromMat(A,vvr,vvc);
-    // (T*H).print(4);
-    //  Tensor Hstar = H;
-    // Hstar.conjugate();
-    // (H * Hstar).print(1);
     TernaryMera test(ITF, 2, 4, true);
     test.bottom_up(true);
 

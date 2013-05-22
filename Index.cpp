@@ -1,5 +1,7 @@
 #include "Index.h"
 
+using namespace std;
+
 void Index::change_card (int newCard){
     card = newCard;
 }
@@ -12,44 +14,43 @@ bool Index::operator < (const Index & other) {
     return (name < other.name);
 }
 
-
-IndexSet::IndexSet(Index one){
-    idxSet.push_back(one);
-    createMap();
-}
-IndexSet::IndexSet(Index one, Index two){
-    idxSet.push_back(one);
-    idxSet.push_back(two);
-    createMap();
-}
-IndexSet::IndexSet(Index one, Index two, Index three){
-    idxSet.push_back(one);
-    idxSet.push_back(two);
-    idxSet.push_back(three);
-    createMap();
-
-}
-IndexSet::IndexSet(Index one, Index two, Index three, Index four){
-    idxSet.push_back(one);
-    idxSet.push_back(two);
-    idxSet.push_back(three);
-    idxSet.push_back(four);
-    createMap();
-}
-IndexSet::IndexSet(std::vector<Index> & idxs){
-    idxSet = idxs;
-    createMap();
+/**
+ * mkIdxSet
+ * makes a vector of Index out of some number of Indexes
+ * overloaded for different number of arguments
+ *
+ * param Index (some number)
+ *
+ * return vector<Index>
+ */
+vector<Index> mkIdxSet (const Index one) {
+    vector<Index> idcs;
+    idcs.push_back(one);
+    return idcs;
 }
 
-IndexSet::~IndexSet(){
+vector<Index> mkIdxSet (const Index one, const Index two){
+    vector<Index> idcs;
+    idcs.push_back(one);
+    idcs.push_back(two);
+    return idcs;
 }
 
-void IndexSet::createMap(){
-    long prodC = 1;
-    for (int i = 0; i < idxSet.size(); ++i)
-        {
-            coeff[idxSet[i].name] = prodC;
-            prodC *= idxSet[i].card;
-        }
-    prodCards = prodC;
+vector<Index> mkIdxSet (const Index one, const Index two,
+                        const Index three) {
+    vector<Index> idcs;
+    idcs.push_back(one);
+    idcs.push_back(two);
+    idcs.push_back(three);
+    return idcs;
+}
+
+vector<Index> mkIdxSet (const Index one, const Index two,
+                        const Index three, const Index four) {
+    vector<Index> idcs;
+    idcs.push_back(one);
+    idcs.push_back(two);
+    idcs.push_back(three);
+    idcs.push_back(four);
+    return idcs;
 }

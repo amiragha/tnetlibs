@@ -1,5 +1,5 @@
 CXX=g++
-CPPFLAGS=-g -std=c++11
+CPPFLAGS=-g
 LDLIBS=-larmadillo
 LDFLAGS=
 RM=rm -f
