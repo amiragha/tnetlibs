@@ -921,7 +921,7 @@ void TernaryMera::bottom_up(bool verbose){
     if (verbose)
         cout << "starting one bottom_up step" << endl;
 
-    for (int i = 0; i < 3; ++i) {
+    for (int i = 0; i < 10; ++i) {
         cout << i << endl;
         for (int l = 0; l < numlevels; ++l) {
             iso_update(l,10,verbose);
