@@ -22,7 +22,7 @@ typedef std::complex<double> cx_d;
 class Tensor {
  public:
     std::vector<Index> indeces;
-    std::vector<cx_d > values; /// complex<double> double matrix from armadillo package
+    std::vector<cx_d> values; /// complex<double> double matrix from armadillo package
     long allCards;
     int rank; /// rank of the Tensor (number of indeces)
     std::map<std::string, long> coeff;/// mapping from Index to the coefficient

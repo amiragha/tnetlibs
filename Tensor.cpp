@@ -69,48 +69,66 @@ cx_mat
 Tensor::toMat (const vector<Index> & rowIndeces,
                const vector<Index> & colIndeces) const {
 
-    //computing the prod of rows
-    vector<int> prodRow(1,1);
-    for (int r = 0; r < rowIndeces.size(); ++r)
-        prodRow.push_back(prodRow[r]*rowIndeces[r].card);
-
-    //computing the prod of cols
-    vector<int> prodCol(1,1);
-    for (int c = 0; c < colIndeces.size(); ++c)
-        prodCol.push_back(prodCol[c]*colIndeces[c].card);
-
-    cx_mat result = cx_mat(prodRow.back(),
-                           prodCol.back() );
-
-    // filling the representation matrix
-    int r_temp, c_temp, idx = 0, ridx;
-
-    for (int r = 0; r < prodRow.back(); ++r)
+    // defining and initilalizing matCoeff, matcards, matasgns
+    vector<int> matcards, matasgns, matcoeff;
+    int prod = 1, prodcol, prodrow;
+    for (int i = 0; i < rowIndeces.size(); ++i)
         {
-            // finding the corresponding row states
-            r_temp = r;
-            for (int i = rowIndeces.size()-1; i > -1; --i)
+            matcards.push_back(rowIndeces[i].card);
+            matasgns.push_back(0);
+            matcoeff.push_back(coeff.at(rowIndeces[i].name));
+            prod *= rowIndeces[i].card;
+        }
+    prodrow = prod;
+    for (int i = 0; i < colIndeces.size(); ++i)
+        {
+            matcards.push_back(colIndeces[i].card);
+            matasgns.push_back(0);
+            matcoeff.push_back(coeff.at(colIndeces[i].name));
+            prod *= colIndeces[i].card;
+        }
+    prodcol = prod/prodrow;
+
+    cx_mat result = cx_mat(prodrow, prodcol);
+
+    int ridx, cidx;
+    // initializing iterator
+    vector<cx_d>::const_iterator iter = values.begin();
+
+    for (int r = 0; r < prodrow; ++r)
+        {
+            for (int c = 0; c < prodcol; ++c)
                 {
-                    idx += coeff.at(rowIndeces[i].name) * (r_temp / prodRow[i]);
-                    r_temp %= prodRow[i];
-                }
-            ridx = idx;
-            for (int c = 0; c < prodCol.back(); ++c)
-                {
-                    // finding the corresponding col states
-                    c_temp = c;
-                    for (int i = colIndeces.size()-1; i > -1; --i)
+                    // putting the value into the matrix
+                    result(r,c) = *iter;
+                    // updating col assignments
+                    for (cidx = rowIndeces.size(); cidx < indeces.size(); ++cidx)
                         {
-                            idx += coeff.at(colIndeces[i].name)*(c_temp / prodCol[i]);
-                            c_temp %= prodCol[i];
+                            if (matasgns[cidx] < matcards[cidx]-1)
+                                {
+                                    matasgns[cidx] += 1;
+                                    iter += matcoeff[cidx];
+                                    break;
+                                }
+                            matasgns[cidx] = 0;
+                            iter -= matcoeff[cidx]*(matcards[cidx]-1);
                         }
 
-                    // putting the value into the matrix
-                    result(r,c) = values[idx];
-                    idx = ridx;
                 }
-            idx = 0;
+            for (ridx = 0; ridx < rowIndeces.size(); ++ridx)
+                {
+                    if (matasgns[ridx] < matcards[ridx]-1)
+                        {
+                            matasgns[ridx] += 1;
+                            iter += matcoeff[ridx];
+                            break;
+                        }
+                    matasgns[ridx] = 0;
+                    iter -= matcoeff[ridx]*(matcards[ridx]-1);
+                }
+
         }
+
     return result;
 }
 
