@@ -32,8 +32,8 @@ int main(int argc, char *argv[])
 
     cout << ITF<<endl;
 
-    TernaryMera test(ITF, 2, 4, true);
-    test.bottom_up(true, true);
+    TernaryMera test(ITF, 2, 4, false);
+    test.buOptimize(10,false, true);
 
 
     return 0;

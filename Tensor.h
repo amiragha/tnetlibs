@@ -20,7 +20,7 @@
 typedef std::complex<double> cx_d;
 
 class Tensor {
- public:
+public:
     std::vector<Index> indeces;
     std::vector<cx_d> values; /// complex<double> double matrix from armadillo package
     long allCards;
@@ -30,14 +30,34 @@ class Tensor {
 
     // arma::cx_mat matRepresentation;
 
+    /**
+     * constructors
+     */
     Tensor(std::vector<Index> & indxs, std::vector<cx_d > & t);
     Tensor(std::vector<Index> & indxs);
     Tensor(){};
     ~Tensor();
     long prodCards();
     void print(int brk);
+
+    /**
+     * toMat
+     * creating a cx_mat from a tensor give the indeces to put on the row
+     * and column of the resulting matrix
+     *
+     * param rowIndeces indeces to keep in row
+     * param colIndeces indeces to keep in column
+     *
+     * return cx_mat the resulting matrix
+     */
+    arma::cx_mat toMat (int num_row, int num_col) const;
+
     arma::cx_mat toMat (const std::vector<Index> & rowIndeces,
                         const std::vector<Index> & colIndeces) const;
+
+    arma::cx_mat& toMat_aux (const std::vector<Index> & rowIndeces,
+                             const std::vector<Index> & colIndeces,
+                             arma::cx_mat& result) const;
     /**
      * fromMat
      * creating a tensor from a cx_mat matrix given the indeces that are on the row

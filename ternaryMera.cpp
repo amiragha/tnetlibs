@@ -780,15 +780,32 @@ void TernaryMera::bottom_up(bool verbose, bool negateH){
     if (verbose)
         cout << "starting one bottom_up step" << endl;
 
-    for (int i = 0; i < 10; ++i) {
-        cout << i << endl;
-        for (int l = 0; l < numlevels; ++l) {
-            iso_update(l,10,verbose,negateH);
-            uni_update(l,10,verbose,negateH);
-        }
-        arnoldi(verbose);
-        for (int l = numlevels-1; l > 0; --l)
-            descend(l);
-        energy(verbose);
+    for (int l = 0; l < numlevels; ++l) {
+        iso_update(l,10,verbose,negateH);
+        uni_update(l,10,verbose,negateH);
+    }
+    arnoldi(verbose);
+    for (int l = numlevels-1; l > 0; --l)
+        descend(l);
+    if (verbose)
+        energy(verbose)[0];
+    else
+        cout << "energy = " << energy()[0] << endl;
+}
+
+/**
+ * buOptimize
+ * perform some number of bottom_up iterations
+ *
+ * param num_iter int number of iterations
+ *
+ * return double final energy
+ */
+double
+TernaryMera::buOptimize (int num_iter, bool verbose, bool negateH) {
+    for (int i = 0; i < num_iter; ++i) {
+        if (verbose)
+            cout << "iteration number : "<< i << endl;
+        bottom_up(verbose, negateH);
     }
 }

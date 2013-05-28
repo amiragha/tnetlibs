@@ -23,7 +23,7 @@ class TernaryMera {
     std::vector<Tensor> Unitary; /// holding Unitaries
     std::vector<Tensor> DensityMatrix; /// holding DensityMatrices
 
- public:
+public:
 
     /**
      * constructors
@@ -32,7 +32,7 @@ class TernaryMera {
                 bool verbose = false);
     ~TernaryMera();
 
- private:
+private:
 
     /**
      * give_random_UniIso
@@ -50,7 +50,7 @@ class TernaryMera {
      */
     void give_random_density();
 
- public:
+public:
 
     /**
      * ascend
@@ -155,5 +155,18 @@ class TernaryMera {
      * return void
      */
     void bottom_up(bool verbose = false, bool negateH = true);
+
+    /**
+     * buOptimize
+     * perform some number of bottom_up iterations
+     *
+     * param num_iter int number of iterations
+     *
+     * return double final energy
+     */
+    double
+    buOptimize (int num_iter, bool verbose = false, bool negateH = true);
+
 };
+
 #endif /* _TERNARYMERA_H_ */

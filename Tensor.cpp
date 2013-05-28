@@ -66,8 +66,28 @@ Tensor::print(int brk){
  * return cx_mat the resulting matrix
  */
 cx_mat
+Tensor::toMat(int num_row, int num_col) const {
+    if (num_row + num_col != indeces.size())
+        cout << "ERROR: toMat, not equal to number of indeces!" << endl;
+    vector<Index> rowIndeces (indeces.begin(), indeces.begin()+num_row);
+    vector<Index> colIndeces (indeces.begin()+num_row, indeces.end());
+    cx_mat resultMat;
+    toMat_aux(rowIndeces,colIndeces, resultMat);
+    return resultMat;
+}
+
+cx_mat
 Tensor::toMat (const vector<Index> & rowIndeces,
                const vector<Index> & colIndeces) const {
+
+    cx_mat resultMat;
+    toMat_aux(rowIndeces,colIndeces, resultMat);
+    return resultMat;
+}
+
+cx_mat&
+Tensor::toMat_aux (const vector<Index> & rowIndeces,
+                   const vector<Index> & colIndeces, cx_mat& result ) const {
 
     // defining and initilalizing matCoeff, matcards, matasgns
     vector<int> matcards, matasgns, matcoeff;
@@ -89,7 +109,7 @@ Tensor::toMat (const vector<Index> & rowIndeces,
         }
     prodcol = prod/prodrow;
 
-    cx_mat result = cx_mat(prodrow, prodcol);
+    result = cx_mat(prodrow, prodcol);
 
     int ridx, cidx;
     // initializing iterator
@@ -254,8 +274,10 @@ Tensor::operator * (const Tensor & other){
 
     // using the vectors to change the representation of tensors
     prodCards();
-    cx_mat res = toMat(rowFinal, contracting) *
-        other.toMat(contracting, colFinal);
+    cx_mat one, two;
+
+    cx_mat res = toMat_aux(rowFinal, contracting, one) *
+        other.toMat_aux(contracting, colFinal, two);
 
     // creating a new set of indeces from the result
     vector<Index> indecesFinal (rowFinal);
