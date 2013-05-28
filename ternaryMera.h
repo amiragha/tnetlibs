@@ -23,7 +23,7 @@ class TernaryMera {
     std::vector<Tensor> Unitary; /// holding Unitaries
     std::vector<Tensor> DensityMatrix; /// holding DensityMatrices
 
-public:
+ public:
 
     /**
      * constructors
@@ -32,7 +32,7 @@ public:
                 bool verbose = false);
     ~TernaryMera();
 
-private:
+ private:
 
     /**
      * give_random_UniIso
@@ -50,7 +50,7 @@ private:
      */
     void give_random_density();
 
-public:
+ public:
 
     /**
      * ascend
@@ -83,7 +83,7 @@ public:
      *
      * return Tensor of environment for isometry
      */
-    Tensor iso_env (int level, bool verbose = false);
+    Tensor iso_env (int level, bool verbose = false, bool negateH = true);
 
     /**
      * uni_env
@@ -94,7 +94,7 @@ public:
      *
      * return Tensor of environment for unitary
      */
-    Tensor uni_env (int level, bool verbose = false);
+    Tensor uni_env (int level, bool verbose = false, bool negateH = true);
 
     /**
      * arnoldi
@@ -128,7 +128,8 @@ public:
      *
      * return void
      */
-    void iso_update (int level, int num_update, bool verbose = false);
+    void iso_update (int level, int num_update,
+                     bool verbose = false, bool negateH = true);
 
     /**
      * uni_update
@@ -140,7 +141,8 @@ public:
      *
      * return void
      */
-    void uni_update (int level, int num_update,  bool verbose = false);
+    void uni_update (int level, int num_update,
+                     bool verbose = false, bool negateH = true);
 
     /**
      * bottom_up
@@ -152,6 +154,6 @@ public:
      *
      * return void
      */
-    void bottom_up(bool verbose = false);
+    void bottom_up(bool verbose = false, bool negateH = true);
 };
 #endif /* _TERNARYMERA_H_ */

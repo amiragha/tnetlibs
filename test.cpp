@@ -29,14 +29,11 @@ int main(int argc, char *argv[])
 
     // making the ITF Hamiltonian
     cx_mat ITF = -kron(PauliZ,PauliZ)-kron(PauliX,I2)/2-kron(I2,PauliX)/2;
-    vec eigenvals = eig_sym(ITF);
 
-    // making all of the energy eigenvalues negative
-    ITF = ITF - max(eigenvals)*I4;
     cout << ITF<<endl;
 
     TernaryMera test(ITF, 2, 4, true);
-    test.bottom_up(true);
+    test.bottom_up(true, true);
 
 
     return 0;

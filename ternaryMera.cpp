@@ -361,7 +361,7 @@ void TernaryMera::descend (int level, bool verbose){
  *
  * return Tensor of environment for isometry
  */
-Tensor TernaryMera::iso_env (int level, bool verbose){
+Tensor TernaryMera::iso_env (int level, bool verbose, bool negateH){
     if (verbose)
         cout << "calculating the Iso environment for level " << level << endl;
 
@@ -379,14 +379,23 @@ Tensor TernaryMera::iso_env (int level, bool verbose){
     // check for cardinality mismatch TO-DO
 
     // copy needed matrices
-    Tensor D   = DensityMatrix[uplevel];
     Tensor H   = Hamiltonian[level];
+    Tensor D   = DensityMatrix[uplevel];
     Tensor U   = Unitary[level];
     Tensor US  = Unitary[level].conjugate();
     Tensor T1  = Isometry[level];
     Tensor T1S = Isometry[level].conjugate();
     Tensor T2  = T1;
     Tensor T2S = T1S;
+
+    // making all of the eigenvalues of hamiltonian negative
+    if (negateH) {
+        vector<Index> Hrow (H.indeces.begin(), H.indeces.begin()+2);
+        vector<Index> Hcol (H.indeces.begin()+2, H.indeces.begin()+4);
+        cx_mat Hmat = H.toMat(Hrow,Hcol);
+        Hmat = Hmat - max(eig_sym(Hmat))*eye<cx_mat>(in*in, in*in);
+        H.fromMat(Hmat,Hrow,Hcol);
+    }
 
     Tensor Temp; // for keeping the temporary results
 
@@ -515,7 +524,7 @@ Tensor TernaryMera::iso_env (int level, bool verbose){
  *
  * return Tensor of environment for unitary
  */
-Tensor TernaryMera::uni_env (int level, bool verbose){
+Tensor TernaryMera::uni_env (int level, bool verbose, bool negateH){
     if (verbose)
         cout << "calculating the Uni environment for level " << level << endl;
 
@@ -540,6 +549,15 @@ Tensor TernaryMera::uni_env (int level, bool verbose){
     Tensor T1S = Isometry[level].conjugate();
     Tensor T2  = T1;
     Tensor T2S = T1S;
+
+    // making all of the eigenvalues of hamiltonian negative
+    if (negateH) {
+        vector<Index> Hrow (H.indeces.begin(), H.indeces.begin()+2);
+        vector<Index> Hcol (H.indeces.begin()+2, H.indeces.begin()+4);
+        cx_mat Hmat = H.toMat(Hrow,Hcol);
+        Hmat = Hmat - max(eig_sym(Hmat))*eye<cx_mat>(in*in, in*in);
+        H.fromMat(Hmat,Hrow,Hcol);
+    }
 
     Tensor Temp; // for keeping the temporary results
 
@@ -688,7 +706,8 @@ vector<double> TernaryMera::energy (bool verbose){
  *
  * return void
  */
-void TernaryMera::iso_update (int level, int num_update, bool verbose){
+void TernaryMera::iso_update (int level, int num_update,
+                              bool verbose, bool negateH){
     if (verbose)
         cout << "updating Isometry of level " << level << endl;
 
@@ -701,7 +720,7 @@ void TernaryMera::iso_update (int level, int num_update, bool verbose){
     cx_mat U, V;
     vec s;
     for (int update = 0; update < num_update; ++update) {
-        env = iso_env(level);
+        env = iso_env(level,false,negateH);
         Ienvr = vector<Index> (env.indeces.begin(), env.indeces.begin()+3);
         Ienvc = vector<Index> (env.indeces.begin()+3, env.indeces.begin()+4);
         svd(U,s,V,env.toMat(Ienvr, Ienvc));
@@ -725,7 +744,8 @@ void TernaryMera::iso_update (int level, int num_update, bool verbose){
  *
  * return void
  */
-void TernaryMera::uni_update (int level, int num_update, bool verbose){
+void TernaryMera::uni_update (int level, int num_update,
+                              bool verbose, bool negateH){
     if (verbose)
         cout << "updating Unitary of level " << level << endl;
 
@@ -735,7 +755,7 @@ void TernaryMera::uni_update (int level, int num_update, bool verbose){
     cx_mat U, V;
     vec s;
     for (int update = 0; update < num_update; ++update) {
-        env = uni_env(level);
+        env = uni_env(level,false,negateH);
         Uenvr = vector<Index> (env.indeces.begin(), env.indeces.begin()+2);
         Uenvc = vector<Index> (env.indeces.begin()+2, env.indeces.begin()+4);
         svd(U,s,V,env.toMat(Uenvr, Uenvc));
@@ -756,15 +776,15 @@ void TernaryMera::uni_update (int level, int num_update, bool verbose){
  *
  * return void
  */
-void TernaryMera::bottom_up(bool verbose){
+void TernaryMera::bottom_up(bool verbose, bool negateH){
     if (verbose)
         cout << "starting one bottom_up step" << endl;
 
     for (int i = 0; i < 10; ++i) {
         cout << i << endl;
         for (int l = 0; l < numlevels; ++l) {
-            iso_update(l,10,verbose);
-            uni_update(l,10,verbose);
+            iso_update(l,10,verbose,negateH);
+            uni_update(l,10,verbose,negateH);
         }
         arnoldi(verbose);
         for (int l = numlevels-1; l > 0; --l)
