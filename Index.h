@@ -19,8 +19,10 @@ public:
     long card;
 
     Index(std::string s, int c) : name(s), card(c){};
+    Index(){};
     ~Index(){};
 
+    void i(std::string s, int c) {name = s; card = c;};
     void change_card (int newCard);
     bool operator ==(const Index & other) const;
     bool operator < (const Index & other);
@@ -41,5 +43,8 @@ std::vector<Index> mkIdxSet (const Index one, const Index two,
                              const Index three);
 std::vector<Index> mkIdxSet (const Index one, const Index two,
                              const Index three, const Index four);
+std::vector<Index> mkIdxSet (const Index one, const Index two,
+                             const Index three, const Index four,
+                             const Index five, const Index six);
 
 #endif /* _INDEX_H_ */

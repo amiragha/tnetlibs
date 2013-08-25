@@ -37,21 +37,21 @@ Tensor::print(int brk){
     double real, imag;
     double thresh = 0.0000000001;
     for (int i = 0; i < values.size(); ++i)
-        {
-            if (i%brk ==0)
-                cout<<endl;
-            real = values[i].real();
-            imag = values[i].imag();
-            //cout << i << ": ";
-            if (real < thresh && real > -thresh) real = 0.0;
-            if (imag < thresh && imag > -thresh) cout <<real<<" ";
-            else {
-                if (imag < 0.0)
-                    cout <<real<<"-i"<<-imag<< " ";
-                else
-                    cout <<real<<"+i"<<imag<<" ";
-            }
+    {
+        if (i%brk ==0)
+            cout<<endl;
+        real = values[i].real();
+        imag = values[i].imag();
+        //cout << i << ": ";
+        if (real < thresh && real > -thresh) real = 0.0;
+        if (imag < thresh && imag > -thresh) cout <<real<<" ";
+        else {
+            if (imag < 0.0)
+                cout <<real<<"-i"<<-imag<< " ";
+            else
+                cout <<real<<"+i"<<imag<<" ";
         }
+    }
     cout << endl;
 }
 
@@ -93,20 +93,20 @@ Tensor::toMat_aux (const vector<Index> & rowIndeces,
     vector<int> matcards, matasgns, matcoeff;
     int prod = 1, prodcol, prodrow;
     for (int i = 0; i < rowIndeces.size(); ++i)
-        {
-            matcards.push_back(rowIndeces[i].card);
-            matasgns.push_back(0);
-            matcoeff.push_back(coeff.at(rowIndeces[i].name));
-            prod *= rowIndeces[i].card;
-        }
+    {
+        matcards.push_back(rowIndeces[i].card);
+        matasgns.push_back(0);
+        matcoeff.push_back(coeff.at(rowIndeces[i].name));
+        prod *= rowIndeces[i].card;
+    }
     prodrow = prod;
     for (int i = 0; i < colIndeces.size(); ++i)
-        {
-            matcards.push_back(colIndeces[i].card);
-            matasgns.push_back(0);
-            matcoeff.push_back(coeff.at(colIndeces[i].name));
-            prod *= colIndeces[i].card;
-        }
+    {
+        matcards.push_back(colIndeces[i].card);
+        matasgns.push_back(0);
+        matcoeff.push_back(coeff.at(colIndeces[i].name));
+        prod *= colIndeces[i].card;
+    }
     prodcol = prod/prodrow;
 
     result = cx_mat(prodrow, prodcol);
@@ -116,38 +116,38 @@ Tensor::toMat_aux (const vector<Index> & rowIndeces,
     vector<cx_d>::const_iterator iter = values.begin();
 
     for (int r = 0; r < prodrow; ++r)
+    {
+        for (int c = 0; c < prodcol; ++c)
         {
-            for (int c = 0; c < prodcol; ++c)
+            // putting the value into the matrix
+            result(r,c) = *iter;
+            // updating col assignments
+            for (cidx = rowIndeces.size(); cidx < indeces.size(); ++cidx)
+            {
+                if (matasgns[cidx] < matcards[cidx]-1)
                 {
-                    // putting the value into the matrix
-                    result(r,c) = *iter;
-                    // updating col assignments
-                    for (cidx = rowIndeces.size(); cidx < indeces.size(); ++cidx)
-                        {
-                            if (matasgns[cidx] < matcards[cidx]-1)
-                                {
-                                    matasgns[cidx] += 1;
-                                    iter += matcoeff[cidx];
-                                    break;
-                                }
-                            matasgns[cidx] = 0;
-                            iter -= matcoeff[cidx]*(matcards[cidx]-1);
-                        }
-
+                    matasgns[cidx] += 1;
+                    iter += matcoeff[cidx];
+                    break;
                 }
-            for (ridx = 0; ridx < rowIndeces.size(); ++ridx)
-                {
-                    if (matasgns[ridx] < matcards[ridx]-1)
-                        {
-                            matasgns[ridx] += 1;
-                            iter += matcoeff[ridx];
-                            break;
-                        }
-                    matasgns[ridx] = 0;
-                    iter -= matcoeff[ridx]*(matcards[ridx]-1);
-                }
+                matasgns[cidx] = 0;
+                iter -= matcoeff[cidx]*(matcards[cidx]-1);
+            }
 
         }
+        for (ridx = 0; ridx < rowIndeces.size(); ++ridx)
+        {
+            if (matasgns[ridx] < matcards[ridx]-1)
+            {
+                matasgns[ridx] += 1;
+                iter += matcoeff[ridx];
+                break;
+            }
+            matasgns[ridx] = 0;
+            iter -= matcoeff[ridx]*(matcards[ridx]-1);
+        }
+
+    }
 
     return result;
 }
@@ -166,10 +166,14 @@ Tensor::toMat_aux (const vector<Index> & rowIndeces,
 void
 Tensor::fromMat(const cx_mat & matrix,
                 const vector<Index> &row, const vector<Index> & col){
+    // updating indeces
     indeces.clear();
     indeces.insert(indeces.end(), row.begin(), row.end());
     indeces.insert(indeces.end(), col.begin(), col.end());
+
+    // updating cardinalities
     allCards = prodCards();
+
     values = vector<cx_d> (allCards, cx_d(0.0,0.0));
     //computing the prod of rows
     vector<int> prodRow(1,1);
@@ -185,32 +189,75 @@ Tensor::fromMat(const cx_mat & matrix,
     int r_temp, c_temp, idx = 0, ridx;
 
     for (int r = 0; r < prodRow.back(); ++r)
+    {
+        // finding the corresponding row states
+        r_temp = r;
+        for (int i = row.size()-1; i > -1; --i)
         {
-            // finding the corresponding row states
-            r_temp = r;
-            for (int i = row.size()-1; i > -1; --i)
-                {
-                    idx += coeff[row[i].name] * (r_temp / prodRow[i]);
-                    r_temp %= prodRow[i];
-                }
-            ridx = idx;
-            for (int c = 0; c < prodCol.back(); ++c)
-                {
-                    // finding the corresponding col states
-                    c_temp = c;
-                    for (int i = col.size()-1; i > -1; --i)
-                        {
-                            idx += coeff[col[i].name]*(c_temp / prodCol[i]);
-                            c_temp %= prodCol[i];
-                        }
-
-                    // putting the value into the matrix
-                    values[idx] = matrix(r,c);
-                    idx = ridx;
-                }
-            idx = 0;
+            idx += coeff[row[i].name] * (r_temp / prodRow[i]);
+            r_temp %= prodRow[i];
         }
+        ridx = idx;
+        for (int c = 0; c < prodCol.back(); ++c)
+        {
+            // finding the corresponding col states
+            c_temp = c;
+            for (int i = col.size()-1; i > -1; --i)
+            {
+                idx += coeff[col[i].name]*(c_temp / prodCol[i]);
+                c_temp %= prodCol[i];
+            }
 
+            // putting the value into the matrix
+            values[idx] = matrix(r,c);
+            idx = ridx;
+        }
+        idx = 0;
+    }
+
+}
+
+/**
+ * toVec
+ * creating a cx_vec from a Tensor
+ *
+ * return cx_vec the resulting vector
+ */
+cx_vec
+Tensor::toVec (){
+    // defining the final vector
+    cx_vec result(allCards);
+    // putting the values in the vector
+    for (int i = 0; i < allCards; ++i) {
+        result(i) = values[i];
+    }
+    return result;
+}
+
+/**
+ * fromVec
+ * creating a tensor from cx_vec vector given the inedeces
+ *
+ * param vect cx_vec
+ * param vecInd
+ *
+ * return void
+ */
+void Tensor::fromVec(const arma::cx_vec & vect,
+                     const std::vector<Index> & vecInd){
+    // updating indeces
+    indeces.clear();
+    indeces.insert(indeces.end(), vecInd.begin(), vecInd.end());
+
+    // updating cardinalities
+    allCards = prodCards();
+
+    values = vector<cx_d> (allCards, cx_d(0.0, 0.0));
+
+    // putting numbers into values
+    for (int i = 0 ; i < allCards; ++i){
+        values[i] = vect(i);
+    }
 }
 
 /**
@@ -233,17 +280,19 @@ Tensor::similarities(const Tensor & other){
     vector<Index> colFinal;
     vector<Index> contracting;
     for (int i = 0; i < indeces.size(); ++i)
-        {
-            if (!other.coeff.count(indeces[i].name))
-                rowFinal.push_back(indeces[i]);
-            else
-                contracting.push_back(indeces[i]);
-        }
+    {
+        if (!other.coeff.count(indeces[i].name))
+            rowFinal.push_back(indeces[i]);
+        else
+            contracting.push_back(indeces[i]);
+    }
+
     for (int i = 0; i < other.indeces.size(); ++i)
-        {
-            if (!coeff.count(other.indeces[i].name))
-                colFinal.push_back(other.indeces[i]);
-        }
+    {
+        if (!coeff.count(other.indeces[i].name))
+            colFinal.push_back(other.indeces[i]);
+    }
+
     result.push_back(rowFinal);
     result.push_back(colFinal);
     result.push_back(contracting);
@@ -294,12 +343,12 @@ Tensor::operator * (const Tensor & other){
 
     Tensor result(indecesFinal);
     for (int c = 0; c < colCard; ++c)
+    {
+        for (int r = 0; r < rowCard; ++r)
         {
-            for (int r = 0; r < rowCard; ++r)
-                {
-                    result.values.push_back(res(r,c));
-                }
+            result.values.push_back(res(r,c));
         }
+    }
 
     result.prodCards();
     return result;
@@ -319,25 +368,25 @@ Tensor::operator + (const Tensor & other){
         equal = false;
     else {
         for (int i = 0; i < indeces.size(); ++i)
-            {
-                if (indeces[i] == other.indeces[i])
-                    continue;
-                equal = false;
-            }
+        {
+            if (indeces[i] == other.indeces[i])
+                continue;
+            equal = false;
+        }
     }
 
     if (!equal)
         cout << "ERROR: + on not equal indeces Tensors";
     else
-        {
-            // create a new Tensor
-            Tensor res(indeces);
-            res.prodCards();
-            res.values = vector<cx_d> (values.size(),cx_d(0.0,0.0));
-            for (int i = 0; i < values.size(); ++i)
-                res.values[i] = values[i] + other.values[i];
-            return res;
-        }
+    {
+        // create a new Tensor
+        Tensor res(indeces);
+        res.prodCards();
+        res.values = vector<cx_d> (values.size(),cx_d(0.0,0.0));
+        for (int i = 0; i < values.size(); ++i)
+            res.values[i] = values[i] + other.values[i];
+        return res;
+    }
 }
 
 /**
@@ -351,9 +400,9 @@ Tensor::operator + (const Tensor & other){
 Tensor&
 Tensor::operator / (double num){
     for (int i = 0; i < values.size(); ++i)
-        {
-            values[i] = values[i]/num;
-        }
+    {
+        values[i] = values[i]/num;
+    }
     return *this;
 }
 
@@ -370,11 +419,11 @@ Tensor::prodCards(){
     coeff.clear();
     vecCoeff.clear();
     for (int idx = 0; idx < indeces.size(); ++idx)
-        {
-            coeff[indeces[idx].name] = prod;
-            vecCoeff.push_back(prod);
-            prod *= indeces[idx].card;
-        }
+    {
+        coeff[indeces[idx].name] = prod;
+        vecCoeff.push_back(prod);
+        prod *= indeces[idx].card;
+    }
     allCards = prod;
     return prod;
 }
@@ -436,16 +485,16 @@ Tensor::rearrange(const vector<Index> & newOrder){
     for (int i = 0; i < newOrder.size(); ++i)
         newCards.push_back(newOrder[i].card*newCards[i]);
     for (int ix = 0; ix < values.size(); ++ix)
+    {
+        idx = 0;
+        ix_temp = ix;
+        for (int i = newOrder.size()-1; i > -1; --i)
         {
-            idx = 0;
-            ix_temp = ix;
-            for (int i = newOrder.size()-1; i > -1; --i)
-                {
-                    idx += (coeff[newOrder[i].name])*(ix_temp/newCards[i]);
-                    ix_temp %= newCards[i];
-                }
-            values[ix] = oldvalues[idx];
+            idx += (coeff[newOrder[i].name])*(ix_temp/newCards[i]);
+            ix_temp %= newCards[i];
         }
+        values[ix] = oldvalues[idx];
+    }
     indeces = newOrder;
     prodCards();
 }
@@ -463,7 +512,8 @@ void Tensor::printIndeces() const{
  *
  * return vector<int> that is the indexes of indeces in the full vector
  */
-vector<int> Tensor::mapFinder(const vector<Index> fullIndeces) const {
+vector<int>
+Tensor::mapFinder(const vector<Index> fullIndeces) const {
     vector<int> idxMap;
     // for (int i = 0; i < fullIndeces.size(); ++i)
     //     {
@@ -471,21 +521,21 @@ vector<int> Tensor::mapFinder(const vector<Index> fullIndeces) const {
     //     }
     // cout << endl;
     for (int i = 0; i < indeces.size(); ++i)
+    {
+        for (int j = 0; j < fullIndeces.size(); ++j)
         {
-            for (int j = 0; j < fullIndeces.size(); ++j)
-                {
-                    if (indeces[i] == fullIndeces[j])
-                        {
-                            idxMap.push_back(j);
-                            break;
-                        }
-                    if (j == fullIndeces.size())
-                        {
-                            cout << "ERROR: mapFInder, index on in fullIndeces";
-                            cout << " : " << indeces[i].name << endl;
-                        }
-                }
+            if (indeces[i] == fullIndeces[j])
+            {
+                idxMap.push_back(j);
+                break;
+            }
+            if (j == fullIndeces.size())
+            {
+                cout << "ERROR: mapFInder, index on in fullIndeces";
+                cout << " : " << indeces[i].name << endl;
+            }
         }
+    }
     return idxMap;
 }
 
@@ -504,4 +554,20 @@ cx_d Tensor::getValueOfAsgn(const vector<int> asgns) const {
         idx += asgns[i]*vecCoeff[i];
     return values[idx];
 }
+
+/**
+ * slice
+ * slicing a Tensor in one index
+ *
+ * param index index to be sliced
+ * param from start
+ * param upto end
+ *
+ * return Tensor a sliced new Tensor
+ */
+Tensor Tensor::slice(Index index, int from, int upto) {
+    Tensor result;
+    return result;
+}
+
 //  LocalWords:  colFinal rowFinal

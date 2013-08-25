@@ -626,7 +626,7 @@ void TernaryMera::arnoldi(bool verbose){
     if (verbose)
         cout << "performing arnoldi algorithm" << endl;
 
-    for (int i = 0; i < 8; ++i)
+    for (int i = 0; i < 28; ++i)
         {
             // cout << endl;
             // cout << i+1 <<endl;

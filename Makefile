@@ -4,7 +4,7 @@ LDLIBS=-larmadillo
 LDFLAGS=
 RM=rm -f
 
-SRCS=test.cpp Tensor.cpp Index.cpp ternaryMera.cpp
+SRCS=test.cpp Tensor.cpp Index.cpp ternaryMera.cpp iDMRG.cpp
 OBJS=$(subst .cpp,.o,$(SRCS))
 EXE=test
 

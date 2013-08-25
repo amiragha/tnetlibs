@@ -73,6 +73,25 @@ public:
                  const std::vector<Index> &row, const std::vector<Index> & col);
 
     /**
+     * toVec
+     * creating a cx_vec from a Tensor
+     *
+     * return cx_vec the resulting vector
+     */
+    arma::cx_vec toVec ();
+
+    /**
+     * fromVec
+     * creating a tensor from cx_vec vector given the inedeces
+     *
+     * param vector cx_vec
+     * param vecIndeces
+     *
+     * return void
+     */
+    void fromVec(const arma::cx_vec & vector,
+                 const std::vector<Index> & vecIndeces);
+    /**
      * similarities
      *
      * finding the similarities between indeces of this tensor with another one
@@ -146,6 +165,17 @@ public:
      */
     cx_d getValueOfAsgn(const std::vector<int> asgns) const;
 
+    /**
+     * slice
+     * slicing a Tensor in one index
+     *
+     * param index index to be sliced
+     * param from start
+     * param upto end
+     *
+     * return Tensor a sliced new Tensor
+     */
+    Tensor slice(Index index, int from, int upto);
 };
 
 

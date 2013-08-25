@@ -54,3 +54,15 @@ vector<Index> mkIdxSet (const Index one, const Index two,
     idcs.push_back(four);
     return idcs;
 }
+vector<Index> mkIdxSet (const Index one, const Index two,
+                        const Index three, const Index four,
+                        const Index five, const Index six){
+    vector<Index> idcs;
+    idcs.push_back(one);
+    idcs.push_back(two);
+    idcs.push_back(three);
+    idcs.push_back(four);
+    idcs.push_back(five);
+    idcs.push_back(six);
+    return idcs;
+}
