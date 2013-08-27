@@ -73,10 +73,6 @@ IDMRG::IDMRG(int mD){
     W.rearrange(mkIdxSet(sdl,sdr,sul,sur));
     W.print(4);
 
-    // TO-REMOVE
-    //WL.print(2);
-    //WR.print(10);
-
     iteration = 0;
     // start the initial setup
     zeroth_iter(true);
@@ -140,8 +136,6 @@ IDMRG::zeroth_iter(bool verbose){
     if (verbose)
         cout << "eigenvals: " << endl << eigenvals << endl;
 
-    // TO-REMOVE : after checking
-    cout << "eigenvec0: " << endl << eigenvecs.col(0) << endl;
     /*
      * Note :
      * here eigenvecs.col(0) is d.d vector
@@ -159,11 +153,6 @@ IDMRG::zeroth_iter(bool verbose){
 
     if (verbose)
         cout << "nextD = " << nextD << "   ";
-    // for (nextD = 0; nextD < S.size(); ++nextD){
-    //     if (less_thresh_test(S[nextD]))
-    //         break;
-    // }
-    // Ds.push_back(nextD);
 
     // the truncation step
     cx_mat U_trunc = U.cols(0, nextD-1);
@@ -200,8 +189,8 @@ IDMRG::zeroth_iter(bool verbose){
     cx_mat guessmat = randu<cx_mat>(2*nextD,2*nextD);
     guess.fromMat(guessmat, mkIdxSet(sul,lu), mkIdxSet(sur,ru));
 
-    // update WL, WR and W to their final value
     /*
+     * update WL, WR and W to their final value
      * Note:
      * after the following updating WL,WR and W will be fixed for ever
      * the first reIndexing of WL and WR is for constructing W
@@ -234,32 +223,28 @@ IDMRG::do_step(bool verbose){
 
     int nextD, D = matDims.back();
 
-    // TO-REAMOVE
-    //cout << "here W has the indeces : sdl bl sul sdr sur br" << endl;
-    //W.printIndeces();
-
     cx_mat ksiVec = Lanczos();
     //cout << "ksiVec" << endl << ksiVec << endl;
 
     Index lu("lu", D), ru("ru", D),ld("ld", D), rd("rd", D);
-    //cout << "left right indeces and w " << endl;
-    // Left.reIndex(mkIdxSet(lu,bl,ld));
-    // Right.reIndex(mkIdxSet(ru,br,rd));
-    // //Left.printIndeces();
-    // //Right.printIndeces();
-    // //W.printIndeces();
-    // Tensor HH = Left * W * Right;
-    // // indeces of HH = lu,ld,sdl,sul,sdr,sur,ru,rd
-    // cx_mat matHH = HH.toMat(mkIdxSet(sdl,ld,sdr,rd),
-    //                         mkIdxSet(sul,lu,sur,ru));
-    // cx_mat eigenvecs;
-    // vec eigenvals;
-    // eig_sym(eigenvals, eigenvecs, matHH);
-    // // cout << "eigenvals= " << eigenvals <<endl;
-    // cout << setprecision(15) <<"groundstate energy = " <<
-    //     eigenvals(0)/(8*(iteration+1)) << endl;
-    // cout << setprecision(15) << "fidelity of exact and lanczos :  " <<
-    //     abs(cdot(eigenvecs.col(0),ksiVec)) << endl;
+
+    /*
+     * exact calculation for comparison,
+     * indeces of HH = lu,ld,sdl,sul,sdr,sur,ru,rd
+     cout << "left right indeces and w " << endl;
+     Left.reIndex(mkIdxSet(lu,bl,ld));
+     Right.reIndex(mkIdxSet(ru,br,rd));
+     Tensor HH = Left * W * Right;
+     cx_mat matHH = HH.toMat(mkIdxSet(sdl,ld,sdr,rd),
+     mkIdxSet(sul,lu,sur,ru));
+     cx_mat eigenvecs;
+     vec eigenvals;
+     eig_sym(eigenvals, eigenvecs, matHH);
+     cout << setprecision(15) <<"groundstate energy = " <<
+     eigenvals(0)/(8*(iteration+1)) << endl;
+     cout << setprecision(15) << "fidelity of exact and lanczos :  " <<
+     abs(cdot(eigenvecs.col(0),ksiVec)) << endl;
+    */
 
     /*
      * Note:
@@ -330,19 +315,11 @@ void IDMRG::guess_calculate(const cx_mat & U, const cx_mat & V,
     cout << "starting left rotation!" << endl;
     cx_mat lft = (U * S);
     lft.reshape(D,d*nextD);
-    // qr(newB, left_lambda, lft.st());
-    // newB = newB.t();
-    // left_lambda = left_lambda.t();
-    //svd
     svd(u, s, newB, lft);
     newB = newB.t();
     diags = diagmat(s);
     diags.resize(D,d*nextD);
     left_lambda = u*diags;
-    // cout << u << endl;
-    // cout << diags << endl;
-    // cout << v << endl;
-
 
     /*
      * rotate right
@@ -352,16 +329,10 @@ void IDMRG::guess_calculate(const cx_mat & U, const cx_mat & V,
     cout << "starting right rotation1" << endl;
     cx_mat rgt = (S * V.t()).st();
     rgt.reshape(D, d*nextD);
-    // qr(newA, right_lambda, rgt.st());
-    //svd
     svd(newA,s,v,rgt.st());
-    //v = v.cols(0, D-1);
     diags = diagmat(s);
     diags.resize(nextD*d,D);
     right_lambda = diags*v.t();
-    // cout << u << endl;
-    // cout << diags << endl;
-    // cout << v << endl;
 
 
     /*
@@ -381,16 +352,9 @@ void IDMRG::guess_calculate(const cx_mat & U, const cx_mat & V,
     cout << "guess calculation" << endl;
     mat guesscore = inv(diagmat(lambda[lambda.size()-2]));
 
-    // cout << "sizes : " << endl;
-    // cout << newA.n_rows << ", "<< newA.n_cols <<endl;
-    // cout << right_lambda.n_rows << ", "<< right_lambda.n_cols <<endl;
-    // cout << guesscore.n_rows << ", "<< guesscore.n_cols <<endl;
-    // cout << left_lambda.n_rows << ", "<< left_lambda.n_cols <<endl;
-    // cout << newA.n_rows << ", "<< newB.n_cols <<endl;
-
     cx_mat guessMat = newA * right_lambda * guesscore * left_lambda * newB;
-    //cout << "guessMat" << guessMat << endl;
     //cx_mat guessMat = randu<cx_mat>(d*nextD,d*nextD);
+
     // Defining new l and r indeces and
     Index nru("ru",nextD), nlu("lu",nextD);
 
@@ -494,14 +458,10 @@ IDMRG::Lanczos(){
     // first round
     guess.printIndeces();
     r= guess.toVec();
-    //cout << "guess" << endl;
-    //guess.print(4);
-    //cout << " r " << r << endl;
 
     q = r/norm(r,2);
     trial = q;
     r = operateH(q);
-    //cout << " r " << r << endl;
     alphas.push_back(cdot(q,r).real());
     r = r - (alphas[0] * q);
     betas.push_back(norm(r,2));
@@ -527,19 +487,12 @@ IDMRG::Lanczos(){
         T(i+1,i+1) = alphas[i+1];
         T(i+1,i) = betas[i];
         T(i,i+1) = betas[i];
-        //cout << "T at level " << i << endl << T << endl;
 
         // calculating the eigenvalues of T
         eig_sym(eigenvals, eigenvecs, T);
-        //cout << "eigenvals" << endl << eigenvals << endl;
-        //cout << "eigenvecs" << endl << Q * eigenvecs << endl;
 
-        // Error estimation
+        // Error estimation and convergence test
         // beta * eigenvecs last row
-        // cout << "Error in eigenvalues" << endl
-        //      << betas[i+1] * eigenvecs.row(i+1) << endl;
-        // adding convergence test
-        //error = betas[i+1] * eigenvecs(i+1,i+1);
         error = betas[i+1] * eigenvecs(i+1,0);
         if (error < 0.0)
             error = -error;
@@ -576,26 +529,15 @@ IDMRG::iterate(){
 
     cout << endl;
 
-    // // printing fidelity
-    // cout << "FIDELITY results" << endl;
-    // for (int i = 0 ; i < fidelity.size(); ++i)
-    // cout << endl;
-
-    // printing energy results at each level
+    // printing energy, Fidelity, truncations, D results at each level
     cout << "ENERGY , fidelity, truncation, D results" << endl;
     for (int i = 0 ; i < energy.size(); ++i) {
         cout << setprecision(10) << energy[i]/(8.0*(i+1)) << "\t\t";
         cout << setprecision(10) << fidelity[i] << "\t\t";
         cout << setprecision(10) << lambda_truncated[i] << "\t\t";
         cout << setprecision(10) << matDims[i]<< "\t";
-	cout << endl;
+        cout << endl;
     }
     cout << endl;
-
-    // printing Ds
-
-    // cout << "ENERGY results" << endl;
-    // for (int i = 0 ; i < energy.size(); ++i)
-    // cout << endl;
 
 }
