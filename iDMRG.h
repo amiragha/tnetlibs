@@ -30,16 +30,21 @@ class IDMRG {
     Tensor Left, Right; /// known Left and Right tensors
     Tensor guess; /// the guess Tensor
     Tensor WL, WR, W;
+    Tensor UP_tensor; /// canonicalization
+    Tensor DN_tensor; /// canonicalization
     std::vector<double> lambda_truncated; /// truncations
     std::vector<arma::vec> lambda; /// lambdas
     std::vector<double> fidelity;
     std::vector<double> energy;
+    std::vector<double> convergence;
+    bool converged;
+    double convergence_threshold;
 
 public:
     /**
      * constructors
      */
-    IDMRG(int mD);
+    IDMRG(int mD, double con_thresh = 1.0e-5);
     ~IDMRG();
 
 private:
@@ -68,12 +73,8 @@ private:
     void zeroth_iter(bool verbose = false);
 
     /**
-     * update_LR
-     * given A and B this function will update Left and Right
-     */
-    /**p
-     * first_iter
-     * managing the first step which is solving for the four site lattice
+     * do_step
+     * go one step forward in the iDMRG algorithm
      */
     void do_step(bool verbose = false);
 
@@ -82,6 +83,7 @@ private:
      * given the truncated and ready to use U, V, S(mat), will rotate the center
      * and correctly calculated a guess (trial) tensor for lanczos to use
      */
+
     void guess_calculate(const arma::cx_mat & U, const arma::cx_mat & V,
                          const arma::mat & S, int D, int nextD);
     /**
@@ -89,7 +91,13 @@ private:
      * given the new A and B, updates Left and Right matrices
      */
     void update_LR(const arma::cx_mat & U, const arma::cx_mat & V,
-		   int D, int nextD);
+                   int D, int nextD);
+
+    /**
+     * canonicalize
+     * canonicalize the wavefunction using the middle A,B, lambda calculated
+     */
+    void canonicalize();
 
 public:
 
@@ -101,10 +109,9 @@ public:
     arma::cx_vec operateH(arma::cx_vec & q);
 
     /**
-     * Iterate
+     * iterate
      * Iterate to the convergence
      */
-    void go_one_step(bool verbose = false);
     void iterate();
 
     /**
@@ -116,6 +123,14 @@ public:
      * return void
      */
     arma::cx_vec Lanczos();
+
+    /**
+     * arnoldi_canonical
+     * performs arnoldi algorithms using UP_tensor and DN_tensor
+     * a part of canonicalization process
+     *
+     */
+    cx_d arnoldi_canonical(Tensor & V);
 };
 
 #endif /* _IDMRG_H_ */
