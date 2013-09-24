@@ -39,6 +39,7 @@ class IDMRG {
     std::vector<double> convergence;
     bool converged;
     double convergence_threshold;
+    double largestEV;
 
 public:
     /**

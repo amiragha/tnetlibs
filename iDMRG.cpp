@@ -29,28 +29,74 @@ IDMRG::IDMRG(int mD, double con_thresh){
     cx_mat I2(2,2);
     I2.eye();
 
-    // introducing the Heisenberg Hamiltonian matrices
-    // TO-DO : find a better representation if possible
-    cx_mat matHamilt = zeros<cx_mat>(10,10);
-    matHamilt.submat(0,0,1,1) = I2;
-    matHamilt.submat(8,8,9,9) = I2;
-    matHamilt.submat(2,0,3,1) = PauliX;
-    matHamilt.submat(8,2,9,3) = PauliX;
-    matHamilt.submat(4,0,5,1) = PauliY;
-    matHamilt.submat(8,4,9,5) = PauliY;
-    matHamilt.submat(6,0,7,1) = PauliZ;
-    matHamilt.submat(8,6,9,7) = PauliZ;
+    // choosing model
+    string model = "heisenberg";
+    //string model = "kitaev";
 
-    cx_mat matHamilt_lmost = matHamilt.rows(8,9);
-    cx_mat matHamilt_rmost = matHamilt.cols(0,1);
+    cx_mat matHamilt, matHamilt_lmost, matHamilt_rmost;
+    if (model == "heisenberg"){
+        // introducing the Heisenberg Hamiltonian matrices
+        // TO-DO : find a better representation if possible
+        matHamilt = zeros<cx_mat>(10,10);
+        matHamilt.submat(0,0,1,1) = I2;
+        matHamilt.submat(8,8,9,9) = I2;
+        matHamilt.submat(2,0,3,1) = PauliX;
+        matHamilt.submat(8,2,9,3) = PauliX;
+        matHamilt.submat(4,0,5,1) = PauliY;
+        matHamilt.submat(8,4,9,5) = PauliY;
+        matHamilt.submat(6,0,7,1) = PauliZ;
+        matHamilt.submat(8,6,9,7) = PauliZ;
+        //matHamilt.submat(8,0,9,1) = -I2;
 
-    // set the Hamiltonian and spin cardinalities
-    B = 5;
-    d = 2;
+        cout << matHamilt << endl;
+        matHamilt_lmost = matHamilt.rows(8,9);
+        matHamilt_rmost = matHamilt.cols(0,1);
 
+        // set the Hamiltonian and spin cardinalities
+        B = 5;
+        d = 2;
+    }
+    else if (model == "kitaev"){
+        // introducing the ladder Kite Hamiltonian matrices
+        /* every three particles is bundled into one particle
+         * Sigma1 = Pz x Pz x Pz
+         * Sigma2 = I2 x Pz x I2
+         * Sigma3 = PX x I2 x I2
+         * Sigma4 = Px x Px x I2
+         * Sigma5 = I2 x I2 x Px
+         * Sigma6 = I2 x Px x Px
+         */
+
+        cx_mat Sigma1, Sigma2, Sigma3, Sigma4, Sigma5, Sigma6, eye8(8,8);
+        Sigma1 = kron(kron(PauliZ, PauliZ), PauliZ);
+        Sigma2 = kron(kron(I2, PauliZ), I2);
+        Sigma3 = kron(kron(PauliX, I2), I2);
+        Sigma4 = kron(kron(PauliX, PauliX), I2);
+        Sigma5 = kron(kron(I2, I2), PauliX);
+        Sigma6 = kron(kron(I2, PauliX), PauliX);
+        eye8.eye();
+
+        matHamilt = zeros<cx_mat>(40,40);
+        matHamilt.submat(0,0,7,7) = eye8;
+        matHamilt.submat(32,32,39,39) = eye8;
+        matHamilt.submat(8,0,15,7) = Sigma2;
+        matHamilt.submat(32,8,39,15) = Sigma1;
+        matHamilt.submat(16,0,23,7) = Sigma4;
+        matHamilt.submat(32,16,39,23) = Sigma3;
+        matHamilt.submat(24,0,31,7) = Sigma6;
+        matHamilt.submat(32,24,39,31) = Sigma5;
+
+        matHamilt_lmost = matHamilt.rows(32,39);
+        matHamilt_rmost = matHamilt.cols(0,7);
+
+        // set the Hamiltonian and spin cardinalities
+        B = 5;
+        d = 8;
+    }
     /* the first dimension is always one
      * This is due to open boundary condition
      */
+    // TO-DO : check for close boundary conditions
     matDims.push_back(1);
 
     // initialization of needed indeces for the whole class
@@ -59,21 +105,40 @@ IDMRG::IDMRG(int mD, double con_thresh){
         sul.i("sul",d), sdl.i("sdl",d), sur.i("sur",d), sdr.i("sdr",d),
         sd.i("sd",d), su.i("su",d);
 
-    // defining Hamiltonian Tensors
-    // constructing Hamiltonian Tensors from matrices
-    // TO-DO : check for potential wrong Index assignments
-    Hamilt.fromMat(matHamilt, mkIdxSet(sd,bl), mkIdxSet(su,br));
 
     /* Note:
      * here WL has Indeces = sdl:d, sul:d, b:B
      * here WR has Indeces = sdr:d, b:B, sur:d
      * then W  has Indeces = sdl:d, sul:d, sdr:d, sur:d
      */
+    bool subtracting_largest_eigenvalue = true;
+    if (subtracting_largest_eigenvalue){
+        vec eigenvals;
+        cx_mat eyed(d,d);
+        eyed.eye();
+        WL.fromMat(matHamilt_lmost, mkIdxSet(sdl), mkIdxSet(sul,b));
+        WR.fromMat(matHamilt_rmost, mkIdxSet(sdr,b), mkIdxSet(sur));
+        W = WL * WR;
+        W.rearrange(mkIdxSet(sdl,sdr,sul,sur));
+        eig_sym(eigenvals,W.toMat(2,2));
+        largestEV = eigenvals(d*d - 1);
+        matHamilt.submat(B*d-d,0,B*d-1,d-1) = -largestEV * eyed;
+        cout << matHamilt << endl;
+        matHamilt_lmost = matHamilt.rows(B*d-d, B*d-1);
+        matHamilt_rmost = matHamilt.cols(0,d-1);
+    }
+    else largestEV = 0.0;
+
     WL.fromMat(matHamilt_lmost, mkIdxSet(sdl), mkIdxSet(sul,b));
     WR.fromMat(matHamilt_rmost, mkIdxSet(sdr,b), mkIdxSet(sur));
     W = WL * WR;
     W.rearrange(mkIdxSet(sdl,sdr,sul,sur));
-    W.print(4);
+
+    //W.print(4);
+
+    // defining Hamiltonian Tensors
+    // constructing Hamiltonian Tensors from matrices
+    Hamilt.fromMat(matHamilt, mkIdxSet(sd,bl), mkIdxSet(su,br));
 
     iteration = 0;
     // start the initial setup
@@ -189,7 +254,7 @@ IDMRG::zeroth_iter(bool verbose){
     Right = B * WR * Bstar;
 
     // guessing for the first level
-    cx_mat guessmat = randu<cx_mat>(2*nextD,2*nextD);
+    cx_mat guessmat = randu<cx_mat>(d*nextD,d*nextD);
     guess.fromMat(guessmat, mkIdxSet(sul,lu), mkIdxSet(sur,ru));
 
     /*
@@ -775,10 +840,13 @@ IDMRG::iterate(){
 
     cout << endl;
 
+    int num_bonds, num_particles;
+
     // printing energy, Fidelity, truncations, D results at each level
     cout << "ENERGY , fidelity, truncation, D results" << endl;
     for (int i = 0 ; i < energy.size(); ++i) {
-        cout << setprecision(10) << energy[i]/(8.0*(i+1)) << "\t\t";
+        num_particles = 2*(i+1);
+        cout << setprecision(10) << energy[i]/num_particles + largestEV << "\t\t";
         cout << setprecision(10) << fidelity[i] << "\t\t";
         cout << setprecision(10) << lambda_truncated[i] << "\t\t";
         cout << setprecision(10) << matDims[i]<< "\t";
