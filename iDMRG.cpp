@@ -30,8 +30,8 @@ IDMRG::IDMRG(int mD, double con_thresh){
     I2.eye();
 
     // choosing model
-    string model = "heisenberg";
-    //string model = "kitaev";
+    //string model = "heisenberg";
+    string model = "kitaev";
 
     cx_mat matHamilt, matHamilt_lmost, matHamilt_rmost;
     if (model == "heisenberg"){
@@ -59,38 +59,66 @@ IDMRG::IDMRG(int mD, double con_thresh){
     else if (model == "kitaev"){
         // introducing the ladder Kite Hamiltonian matrices
         /* every three particles is bundled into one particle
-         * Sigma1 = Pz x Pz x Pz
-         * Sigma2 = I2 x Pz x I2
-         * Sigma3 = PX x I2 x I2
-         * Sigma4 = Px x Px x I2
-         * Sigma5 = I2 x I2 x Px
-         * Sigma6 = I2 x Px x Px
          */
 
-        cx_mat Sigma1, Sigma2, Sigma3, Sigma4, Sigma5, Sigma6, eye8(8,8);
-        Sigma1 = kron(kron(PauliZ, PauliZ), PauliZ);
-        Sigma2 = kron(kron(I2, PauliZ), I2);
-        Sigma3 = kron(kron(PauliX, I2), I2);
-        Sigma4 = kron(kron(PauliX, PauliX), I2);
-        Sigma5 = kron(kron(I2, I2), PauliX);
-        Sigma6 = kron(kron(I2, PauliX), PauliX);
+	double J_pv = 1.0, J_cv = 0.5;
+        cx_mat Sig_zzz, Sig_zII, Sig_IxI, Sig_xxI, Sig_IIx, Sig_xII,
+            Sig_xIx, Sig_xzx, Sig_Ixz, Sig_zxI, eye8(8,8);
+        Sig_zzz = kron(kron(PauliZ, PauliZ), PauliZ);
+        Sig_zII = kron(kron(PauliZ, I2), I2);
+        Sig_IxI = kron(kron(I2, PauliX), I2);
+        Sig_xxI = kron(kron(PauliX, PauliX), I2);
+        Sig_IIx = kron(kron(I2, I2), PauliX);
+        Sig_xIx = kron(kron(PauliX, I2), PauliX);
+        Sig_xzx = kron(kron(PauliX, PauliZ), PauliX);
+        Sig_Ixz = kron(kron(I2, PauliX), PauliZ);
+        Sig_zxI = kron(kron(PauliZ, PauliX), I2);
+        Sig_xII = kron(kron(PauliX, I2), I2);
+
         eye8.eye();
 
-        matHamilt = zeros<cx_mat>(40,40);
-        matHamilt.submat(0,0,7,7) = eye8;
-        matHamilt.submat(32,32,39,39) = eye8;
-        matHamilt.submat(8,0,15,7) = Sigma2;
-        matHamilt.submat(32,8,39,15) = Sigma1;
-        matHamilt.submat(16,0,23,7) = Sigma4;
-        matHamilt.submat(32,16,39,23) = Sigma3;
-        matHamilt.submat(24,0,31,7) = Sigma6;
-        matHamilt.submat(32,24,39,31) = Sigma5;
+        bool nocluster = true;
+        if (nocluster){
+            matHamilt = zeros<cx_mat>(40,40);
+            matHamilt.submat(0,0,7,7) = eye8;
+            matHamilt.submat(32,32,39,39) = eye8;
+            matHamilt.submat(8,0,15,7) = Sig_zII;
+            matHamilt.submat(32,8,39,15) = Sig_zzz;
+            matHamilt.submat(16,0,23,7) = J_pv * Sig_xxI;
+            matHamilt.submat(32,16,39,23) = Sig_IxI;
+            matHamilt.submat(24,0,31,7) = J_pv * Sig_xIx;
+            matHamilt.submat(32,24,39,31) = Sig_IIx;
 
-        matHamilt_lmost = matHamilt.rows(32,39);
-        matHamilt_rmost = matHamilt.cols(0,7);
+            matHamilt_lmost = matHamilt.rows(32,39);
+            matHamilt_rmost = matHamilt.cols(0,7);
 
-        // set the Hamiltonian and spin cardinalities
-        B = 5;
+            // set the Hamiltonian and spin cardinalities
+            B = 5;
+        }
+        else {
+            matHamilt = zeros<cx_mat>(56,56);
+            matHamilt.submat(0,0,7,7) = eye8;
+            matHamilt.submat(48,48,55,55) = eye8;
+            matHamilt.submat(8,0,15,7) = Sig_zII;
+            matHamilt.submat(48,8,55,15) = Sig_zzz;
+            matHamilt.submat(16,0,23,7) = J_pv * Sig_xxI;
+            matHamilt.submat(48,16,55,23) = Sig_IxI;
+            matHamilt.submat(24,0,31,7) = J_pv * Sig_xIx;
+            matHamilt.submat(48,24,55,31) = Sig_IIx;
+            matHamilt.submat(32,0,39,7) = J_cv * Sig_xII;
+            matHamilt.submat(48,32,55,39) = Sig_Ixz;
+            matHamilt.submat(40,0,47,7) = J_cv * Sig_zxI;
+            matHamilt.submat(48,40,55,47) = Sig_IIx;
+            matHamilt.submat(48,0,55,7) = J_cv * Sig_xzx;
+
+
+            matHamilt_lmost = matHamilt.rows(32,39);
+            matHamilt_rmost = matHamilt.cols(0,7);
+
+            // set the Hamiltonian and spin cardinalities
+            B = 7;
+        }
+
         d = 8;
     }
     /* the first dimension is always one
@@ -122,7 +150,8 @@ IDMRG::IDMRG(int mD, double con_thresh){
         W.rearrange(mkIdxSet(sdl,sdr,sul,sur));
         eig_sym(eigenvals,W.toMat(2,2));
         largestEV = eigenvals(d*d - 1);
-        matHamilt.submat(B*d-d,0,B*d-1,d-1) = -largestEV * eyed;
+        matHamilt.submat(B*d-d,0,B*d-1,d-1) =
+            matHamilt.submat(B*d-d,0,B*d-1,d-1) -largestEV * eyed;
         cout << matHamilt << endl;
         matHamilt_lmost = matHamilt.rows(B*d-d, B*d-1);
         matHamilt_rmost = matHamilt.cols(0,d-1);
@@ -162,7 +191,7 @@ IDMRG::~IDMRG(){
 int
 IDMRG::lambda_size_trunc (const vec & S){
     double svalue;
-    double threshold = 1.0e-15;
+    double threshold = 1.0e-9;
     int nextD = 0;
     for (nextD = 0; nextD < S.size(); ++nextD){
         svalue = S[nextD];
@@ -555,9 +584,13 @@ void IDMRG::update_LR(const cx_mat & U, const cx_mat & V,
         // defining new lambda and new gamma
         vec new_lambda_vec;
         cx_mat U,V;
+        // cout << "old_lambda" << old_lambda <<endl;
+        // cout << "Y" << Y <<endl;
+        // cout << "X" << X <<endl;
         svd(U, new_lambda_vec, V, (Y * old_lambda * X) );
         cx_mat templeft_mat, tempright_mat;
         Tensor templeft, tempright, rLambar, lLambar, new_Gamma, new_lambda;
+        // cout << "V" << V << endl;
         rLambar = Lambar;
         lLambar = Lambar;
         A.reIndex(mkIdxSet(plu, sul, gml));

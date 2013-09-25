@@ -1,6 +1,6 @@
 CXX=g++
-CPPFLAGS=-g
-LDLIBS=-larmadillo
+CPPFLAGS=-g -O1
+LDLIBS=-O1 -larmadillo
 LDFLAGS=
 RM=rm -f
 

@@ -45,7 +45,7 @@ public:
     /**
      * constructors
      */
-    IDMRG(int mD, double con_thresh = 1.0e-5);
+    IDMRG(int mD, double con_thresh = 1.0e-9);
     ~IDMRG();
 
 private:
