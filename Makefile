@@ -1,17 +1,25 @@
 CXX=g++
-CPPFLAGS=-g -O1
+CPPFLAGS=-fPIC -g -Wall -O1
 LDLIBS=-O1 -larmadillo
-LDFLAGS=
+LDFLAGS=-L$(DIR) -Wl,-rpath=$(DIR)
 RM=rm -f
+DIR=$(CURDIR)
 
-SRCS=test.cpp Tensor.cpp Index.cpp ternaryMera.cpp iDMRG.cpp
+SRCS=Tensor.cpp Index.cpp ternaryMera.cpp iDMRG.cpp
 OBJS=$(subst .cpp,.o,$(SRCS))
-EXE=test
+LIBS=libtmera.so libidmrg.so
+EXE=ex
 
 all: $(EXE)
 
-$(EXE): $(OBJS)
-	$(CXX)  $(OBJS) -o $(EXE) $(LDFLAGS) $(LDLIBS)
+$(EXE): $(LIBS)
+	$(CXX) -Wall -o $(EXE) $(LDFLAGS) $(LDLIBS) example.cpp -ltmera -lidmrg
+
+libtmera.so: Tensor.o Index.o ternaryMera.o
+	$(CXX) -shared -o libtmera.so Tensor.o Index.o ternaryMera.o $(LDLIBS)
+
+libidmrg.so: Tensor.o Index.o iDMRG.o
+	$(CXX) -shared -o libidmrg.so Tensor.o Index.o iDMRG.o $(LDLIBS)
 
 depend: .depend
 

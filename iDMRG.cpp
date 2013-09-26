@@ -9,118 +9,22 @@ using namespace arma;
 /**
  * constructors
  */
-IDMRG::IDMRG(int mD, double con_thresh){
+IDMRG::IDMRG(cx_mat & mHamilt,int Bdim, int dim,int mD, double con_thresh){
 
+    B = Bdim;
+    d = dim;
     maxD = mD;
     converged = false;
     convergence_threshold = con_thresh;
 
-    // introducing the Hamiltonian
-    cx_mat PauliX,PauliY,PauliZ,I;
-    PauliX << cx_d(0.0,0.0) << cx_d(1.0,0.0) << endr
-           << cx_d(1.0,0.0) << cx_d(0.0,0.0) << endr;
-
-    PauliY << cx_d(0.0,0.0) << cx_d(0.0,-1.0) << endr
-           << cx_d(0.0,1.0) << cx_d(0.0,0.0) << endr;
-
-    PauliZ << cx_d(1.0,0.0) << cx_d(0.0,0.0) << endr
-           << cx_d(0.0,0.0) << cx_d(-1.0,0.0) << endr;
-
-    cx_mat I2(2,2);
-    I2.eye();
-
-    // choosing model
-    //string model = "heisenberg";
-    string model = "kitaev";
+    // checking the sizes of the hamiltonian with the given Bdim and dim
+    cout << mHamilt.size() << "==" << d * Bdim *Bdim * d << endl;
 
     cx_mat matHamilt, matHamilt_lmost, matHamilt_rmost;
-    if (model == "heisenberg"){
-        // introducing the Heisenberg Hamiltonian matrices
-        // TO-DO : find a better representation if possible
-        matHamilt = zeros<cx_mat>(10,10);
-        matHamilt.submat(0,0,1,1) = I2;
-        matHamilt.submat(8,8,9,9) = I2;
-        matHamilt.submat(2,0,3,1) = PauliX;
-        matHamilt.submat(8,2,9,3) = PauliX;
-        matHamilt.submat(4,0,5,1) = PauliY;
-        matHamilt.submat(8,4,9,5) = PauliY;
-        matHamilt.submat(6,0,7,1) = PauliZ;
-        matHamilt.submat(8,6,9,7) = PauliZ;
-        //matHamilt.submat(8,0,9,1) = -I2;
+    matHamilt = mHamilt;
+    matHamilt_lmost = matHamilt.rows(B*d-d, B*d-1);
+    matHamilt_rmost = matHamilt.cols(0,d-1);
 
-        cout << matHamilt << endl;
-        matHamilt_lmost = matHamilt.rows(8,9);
-        matHamilt_rmost = matHamilt.cols(0,1);
-
-        // set the Hamiltonian and spin cardinalities
-        B = 5;
-        d = 2;
-    }
-    else if (model == "kitaev"){
-        // introducing the ladder Kite Hamiltonian matrices
-        /* every three particles is bundled into one particle
-         */
-
-	double J_pv = 1.0, J_cv = 0.5;
-        cx_mat Sig_zzz, Sig_zII, Sig_IxI, Sig_xxI, Sig_IIx, Sig_xII,
-            Sig_xIx, Sig_xzx, Sig_Ixz, Sig_zxI, eye8(8,8);
-        Sig_zzz = kron(kron(PauliZ, PauliZ), PauliZ);
-        Sig_zII = kron(kron(PauliZ, I2), I2);
-        Sig_IxI = kron(kron(I2, PauliX), I2);
-        Sig_xxI = kron(kron(PauliX, PauliX), I2);
-        Sig_IIx = kron(kron(I2, I2), PauliX);
-        Sig_xIx = kron(kron(PauliX, I2), PauliX);
-        Sig_xzx = kron(kron(PauliX, PauliZ), PauliX);
-        Sig_Ixz = kron(kron(I2, PauliX), PauliZ);
-        Sig_zxI = kron(kron(PauliZ, PauliX), I2);
-        Sig_xII = kron(kron(PauliX, I2), I2);
-
-        eye8.eye();
-
-        bool nocluster = true;
-        if (nocluster){
-            matHamilt = zeros<cx_mat>(40,40);
-            matHamilt.submat(0,0,7,7) = eye8;
-            matHamilt.submat(32,32,39,39) = eye8;
-            matHamilt.submat(8,0,15,7) = Sig_zII;
-            matHamilt.submat(32,8,39,15) = Sig_zzz;
-            matHamilt.submat(16,0,23,7) = J_pv * Sig_xxI;
-            matHamilt.submat(32,16,39,23) = Sig_IxI;
-            matHamilt.submat(24,0,31,7) = J_pv * Sig_xIx;
-            matHamilt.submat(32,24,39,31) = Sig_IIx;
-
-            matHamilt_lmost = matHamilt.rows(32,39);
-            matHamilt_rmost = matHamilt.cols(0,7);
-
-            // set the Hamiltonian and spin cardinalities
-            B = 5;
-        }
-        else {
-            matHamilt = zeros<cx_mat>(56,56);
-            matHamilt.submat(0,0,7,7) = eye8;
-            matHamilt.submat(48,48,55,55) = eye8;
-            matHamilt.submat(8,0,15,7) = Sig_zII;
-            matHamilt.submat(48,8,55,15) = Sig_zzz;
-            matHamilt.submat(16,0,23,7) = J_pv * Sig_xxI;
-            matHamilt.submat(48,16,55,23) = Sig_IxI;
-            matHamilt.submat(24,0,31,7) = J_pv * Sig_xIx;
-            matHamilt.submat(48,24,55,31) = Sig_IIx;
-            matHamilt.submat(32,0,39,7) = J_cv * Sig_xII;
-            matHamilt.submat(48,32,55,39) = Sig_Ixz;
-            matHamilt.submat(40,0,47,7) = J_cv * Sig_zxI;
-            matHamilt.submat(48,40,55,47) = Sig_IIx;
-            matHamilt.submat(48,0,55,7) = J_cv * Sig_xzx;
-
-
-            matHamilt_lmost = matHamilt.rows(32,39);
-            matHamilt_rmost = matHamilt.cols(0,7);
-
-            // set the Hamiltonian and spin cardinalities
-            B = 7;
-        }
-
-        d = 8;
-    }
     /* the first dimension is always one
      * This is due to open boundary condition
      */
@@ -220,8 +124,6 @@ IDMRG::zeroth_iter(bool verbose){
     if (verbose)
         cout << "Zeroth level starting" << endl;
 
-    // getting the D from the matDims
-    int D = matDims.back();
     int nextD;
 
     // solving the eigenvalue problem for W.toMat(2,2);
@@ -385,12 +287,7 @@ IDMRG::do_step(bool verbose){
     guess_calculate(U_trunc, V_trunc, S_trunc_mat, D, nextD);
 
     update_LR(U_trunc, V_trunc, D, nextD);
-    // if (!converged){
-    //         // updating Left and Right
-    //     }
-    //     else {
-    //         canonicalize();
-    //     }
+
 }
 
 /**
@@ -873,7 +770,7 @@ IDMRG::iterate(){
 
     cout << endl;
 
-    int num_bonds, num_particles;
+    int num_particles;
 
     // printing energy, Fidelity, truncations, D results at each level
     cout << "ENERGY , fidelity, truncation, D results" << endl;

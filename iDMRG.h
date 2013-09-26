@@ -45,7 +45,8 @@ public:
     /**
      * constructors
      */
-    IDMRG(int mD, double con_thresh = 1.0e-9);
+    IDMRG(arma::cx_mat & mHamilt, int Bdim, int dim, int mD,
+          double con_thresh = 1.0e-9);
     ~IDMRG();
 
 private:
