@@ -12,8 +12,8 @@ EXE=ex
 
 all: $(EXE)
 
-$(EXE): $(LIBS)
-	$(CXX) -Wall -o $(EXE) $(LDFLAGS) $(LDLIBS) example.cpp -ltmera -lidmrg
+$(EXE): $(LIBS) example.cpp
+	$(CXX) -Wall -o $(EXE) example.cpp $(LDFLAGS) $(LDLIBS) -ltmera -lidmrg
 
 libtmera.so: Tensor.o Index.o ternaryMera.o
 	$(CXX) -shared -o libtmera.so Tensor.o Index.o ternaryMera.o $(LDLIBS)
@@ -29,6 +29,7 @@ depend: .depend
 
 clean:
 	$(RM) $(OBJS)
+	$(RM) $(LIBS)
 
 dist-clean: clean
 	$(RM) $(OBJS)

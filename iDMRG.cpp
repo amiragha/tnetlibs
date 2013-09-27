@@ -18,6 +18,7 @@ IDMRG::IDMRG(cx_mat & mHamilt,int Bdim, int dim,int mD, double con_thresh){
     convergence_threshold = con_thresh;
 
     // checking the sizes of the hamiltonian with the given Bdim and dim
+    // TO-DO : change this to assert
     cout << mHamilt.size() << "==" << d * Bdim *Bdim * d << endl;
 
     cx_mat matHamilt, matHamilt_lmost, matHamilt_rmost;
@@ -56,7 +57,6 @@ IDMRG::IDMRG(cx_mat & mHamilt,int Bdim, int dim,int mD, double con_thresh){
         largestEV = eigenvals(d*d - 1);
         matHamilt.submat(B*d-d,0,B*d-1,d-1) =
             matHamilt.submat(B*d-d,0,B*d-1,d-1) -largestEV * eyed;
-        cout << matHamilt << endl;
         matHamilt_lmost = matHamilt.rows(B*d-d, B*d-1);
         matHamilt_rmost = matHamilt.cols(0,d-1);
     }
@@ -66,8 +66,6 @@ IDMRG::IDMRG(cx_mat & mHamilt,int Bdim, int dim,int mD, double con_thresh){
     WR.fromMat(matHamilt_rmost, mkIdxSet(sdr,b), mkIdxSet(sur));
     W = WL * WR;
     W.rearrange(mkIdxSet(sdl,sdr,sul,sur));
-
-    //W.print(4);
 
     // defining Hamiltonian Tensors
     // constructing Hamiltonian Tensors from matrices
@@ -441,6 +439,10 @@ void IDMRG::update_LR(const cx_mat & U, const cx_mat & V,
          * Lam = gml, gmr
          * Lambar = pru, ou
          */
+        // printing gammas
+        cout << "A :" << endl << A.toMat(mkIdxSet(plu,sul),mkIdxSet(nlu)) << endl;
+        cout << "B :" << endl << B.toMat(mkIdxSet(nru,sur),mkIdxSet(pru)) << endl;
+
         Lambar.fromMat(dlambar,mkIdxSet(pru), mkIdxSet(ou));
         A.reIndex(mkIdxSet(vu,sul,gml));
         B.reIndex(mkIdxSet(gmr,pru,sur));
@@ -613,57 +615,70 @@ IDMRG::Lanczos(){
     vec eigenvals;
     double error = 1.0;
     vector<double> alphas, betas;
-    int i;
+    int i,cycle;
+    int lanczos_cycle_max = 50;
     // first round
-    guess.printIndeces();
     r= guess.toVec();
+    cycle = 0;
+    while(true){
+        //cout << "hoy" << endl;
+        // cleaning alpha and beta
+        alphas.clear();
+        betas.clear();
 
-    q = r/norm(r,2);
-    trial = q;
-    r = operateH(q);
-    alphas.push_back(cdot(q,r).real());
-    r = r - (alphas[0] * q);
-    betas.push_back(norm(r,2));
-    Q = q;
-    T << alphas[0];
-
-    i = 0;
-    //rounds
-    while (true){
-        q = r/betas[i];
-        r = operateH(q) - betas[i] * Q.col(i);
+        q = r/norm(r,2);
+        trial = q; //for fidelity calculation
+        r = operateH(q);
         alphas.push_back(cdot(q,r).real());
-        r = r - alphas[i+1] * q;
-
-        // adding re-orthogonalization
-        r = r - Q * (Q.t() * r);
-
+        r = r - (alphas[0] * q);
         betas.push_back(norm(r,2));
-        Q = join_rows(Q,q);
+        Q = q;
+        T << alphas[0];
 
-        // constructing the T matrix
-        T.resize(i+2,i+2);
-        T(i+1,i+1) = alphas[i+1];
-        T(i+1,i) = betas[i];
-        T(i,i+1) = betas[i];
+        //i = 0;
+        //rounds
+        for (i = 0; i < lanczos_cycle_max; ++i){
+            //cout << i << endl;
+            q = r/betas[i];
+            r = operateH(q) - betas[i] * Q.col(i);
+            alphas.push_back(cdot(q,r).real());
+            r = r - alphas[i+1] * q;
 
-        // calculating the eigenvalues of T
-        eig_sym(eigenvals, eigenvecs, T);
+            // adding re-orthogonalization
+            r = r - Q * (Q.t() * r);
 
-        // Error estimation and convergence test
-        // beta * eigenvecs last row
-        error = betas[i+1] * eigenvecs(i+1,0);
-        if (error < 0.0)
-            error = -error;
-        if ( error< 1.0e-15)
+            betas.push_back(norm(r,2));
+            Q = join_rows(Q,q);
+
+            // constructing the T matrix
+            T.resize(i+2,i+2);
+            T(i+1,i+1) = alphas[i+1];
+            T(i+1,i) = betas[i];
+            T(i,i+1) = betas[i];
+
+            // calculating the eigenvalues of T
+            eig_sym(eigenvals, eigenvecs, T);
+
+            // Error estimation and convergence test
+            // beta * eigenvecs last row
+            error = betas[i+1] * eigenvecs(i+1,0);
+            if (error < 0.0)
+                error = -error;
+            if ( error< 1.0e-15)
+                break;
+        }
+
+        r = Q*eigenvecs.col(0);
+        if (error < 1.0e-14)
             break;
-        // increment i
-        ++i;
+        cycle++;
     }
     // fidelity calculations
-    cout << "error: " << error << " , number of steps : " << i+1 << endl;
+    cout << "error: " << error
+         << " , number of steps : " << i+cycle*lanczos_cycle_max << endl;
     //final = Q*eigenvecs.col(i+1);
-    final = Q*eigenvecs.col(0);
+    //final = Q*eigenvecs.col(0);
+    final = r;
     //energy.push_back(eigenvals(i+1));
     energy.push_back(eigenvals(0));
     cx_d f = cdot(trial,final);
@@ -761,7 +776,7 @@ cx_d IDMRG::arnoldi_canonical(Tensor & V){
 
 void
 IDMRG::iterate(){
-    int N = 100;
+    int N = 1000;
     for (int iter=0; iter < N; ++iter){
         do_step(true);
         if (converged)
