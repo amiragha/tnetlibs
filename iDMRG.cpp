@@ -2,6 +2,7 @@
 #include "iDMRG.h"
 #include <iomanip>
 #include <cmath>
+#include <cassert>
 
 using namespace std;
 using namespace arma;
@@ -443,13 +444,11 @@ void IDMRG::canonicalize(Tensor A, Tensor B, int D, int nextD){
         D = nextD;
         // A and B truncation
         cx_mat tempA, tempB;
-        tempA = A.toMat(mkIdxSet(plu), mkIdxSet(sul,nlu)).rows(0,D-1);
-        tempB = B.toMat(mkIdxSet(nru,sur), mkIdxSet(pru)).cols(0,D-1);
+        // using slice
+        A = A.slice(plu,0,D);
+        B = B.slice(pru,0,D);
         pru.card = D;
         plu.card = D;
-        A.fromMat(tempA,mkIdxSet(plu), mkIdxSet(sul,nlu));
-        B.fromMat(tempB,mkIdxSet(nru,sur),mkIdxSet(pru));
-        B.rearrange(mkIdxSet(nru,pru,sur));
     }
 
     // if D < nextD
@@ -486,6 +485,8 @@ void IDMRG::canonicalize(Tensor A, Tensor B, int D, int nextD){
      * Lambar = pru, ou
      */
     // printing gammas
+    A.printIndeces();
+    B.printIndeces();
     cout << "A :" << endl << A.toMat(mkIdxSet(plu,sul),mkIdxSet(nlu)) << endl;
     cout << "B :" << endl << B.toMat(mkIdxSet(nru,sur),mkIdxSet(pru)) << endl;
 
@@ -505,7 +506,15 @@ void IDMRG::canonicalize(Tensor A, Tensor B, int D, int nextD){
     cout << "left : " << endl << Vecvals << endl;
     Y = Vecvecs*diagmat(sqrt(Vecvals));
     Y = Y.st();
-    //for (int dummy=0)
+
+    // the eigenvalue of sorted in ascending order
+    int lastD_left;
+    for (lastD_left = 0; lastD_left < Vecvals.size(); ++lastD_left){
+        if (abs(Vecvals[lastD_left]) > 1.0e-10)
+            break;
+    }
+    lastD_left = D - lastD_left;
+
     // right canonicalization
     A.reIndex(mkIdxSet(plu, sul, gml));
     B.reIndex(mkIdxSet(gmr, vu, sur));
@@ -524,6 +533,32 @@ void IDMRG::canonicalize(Tensor A, Tensor B, int D, int nextD){
     //eig_gen(iVecvals,Vecvecs,Vecmat);
     cout << "right : " << endl << Vecvals << endl;
     X = Vecvecs*diagmat(sqrt(Vecvals));
+
+    int lastD_right;
+    for (lastD_right = 0; lastD_right < Vecvals.size(); ++lastD_right){
+        if (abs(Vecvals[lastD_right]) > 1.0e-10)
+            break;
+    }
+    lastD_right = D - lastD_right;
+
+    // check for compatibility of left and right
+    assert (lastD_right == lastD_left);
+    int lastD = lastD_right;
+
+    if (lastD != D){
+        cout << "D is : " << D << " and lastD is : " << lastD << endl;
+        // performing needed truncaton
+        A.reIndex(mkIdxSet(plu, sul, nlu));
+        B.reIndex(mkIdxSet(nru, pru, sur));
+        A = A.slice(plu,0,lastD).slice(nlu,0,lastD);
+        B = B.slice(nru,0,lastD).slice(pru,0,lastD);
+	canonicalize(A,B,lastD,lastD);
+	return;
+        // X, Y
+
+    } else
+        lastD = D;
+
 
     cout << "defining new lambda and Gamma" << endl;
     // defining new lambda and new gamma
@@ -544,7 +579,6 @@ void IDMRG::canonicalize(Tensor A, Tensor B, int D, int nextD){
     lLambar.reIndex(mkIdxSet(tl, plu));
     rLambar.reIndex(mkIdxSet(pru, tr));
     templeft_mat = V.t() * inv(X);
-    cout << "1" << endl;
     templeft.fromMat(templeft_mat,mkIdxSet(lu),mkIdxSet(tl));
     tempright_mat = inv(Y) * U;
     tempright.fromMat(tempright_mat,mkIdxSet(tr),mkIdxSet(ru));
@@ -734,7 +768,7 @@ IDMRG::Lanczos(){
  *
  */
 cx_d IDMRG::arnoldi_canonical(Tensor & V){
-
+    cout << "arnoldi" << endl;
     Index vu = V.indeces[0];
     Index vd = V.indeces[1];
     Tensor Vtemp;
