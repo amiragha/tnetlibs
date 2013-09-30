@@ -2,12 +2,21 @@
 #include "Tensor.h"
 #include "ternaryMera.h"
 #include "iDMRG.h"
+#include <armadillo>
 
 using namespace std;
 using namespace arma;
 
 int main(int argc, char *argv[])
 {
+
+    // testing Tensor.h
+    Index a("a",2), b("b",3), c("c",4);
+    Tensor ten;
+    ten.fromMat(randu<cx_mat>(6,4), mkIdxSet(a,b), mkIdxSet(c));
+    ten.print(4);
+    Tensor ten_sliced = ten.slice(b,1,2);
+    ten_sliced.print(4);
 
     // defining pauli matrices
     cx_mat PauliX,PauliY,PauliZ,I;
@@ -29,8 +38,8 @@ int main(int argc, char *argv[])
     cx_mat ITF = -kron(PauliZ,PauliZ)-kron(PauliX,I2)/2-kron(I2,PauliX)/2;
 
     // calling ternary MERA
-    TernaryMera test(ITF, 2, 4, true);
-    test.buOptimize(30,true, true);
+    // TernaryMera test(ITF, 2, 4, true);
+    // test.buOptimize(30,true, true);
 
     // example for iDMRG
     // Heisenberg Hamiltonian

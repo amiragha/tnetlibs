@@ -99,7 +99,7 @@ private:
      * canonicalize
      * canonicalize the wavefunction using the middle A,B, lambda calculated
      */
-    void canonicalize();
+    void canonicalize( Tensor A, Tensor B, int D, int nextD);
 
 public:
 

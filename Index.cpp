@@ -7,7 +7,7 @@ void Index::change_card (int newCard){
 }
 
 bool Index::operator == (const Index & other) const {
-    return (name == other.name);
+    return (name == other.name && card == other.card);
 }
 
 bool Index::operator < (const Index & other) {

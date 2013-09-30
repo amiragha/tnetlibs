@@ -13,22 +13,23 @@
 
 /**
  * Tensor class
- * each Tensor contains a variable list of input and output
- * and also the cardinality of them
- * and a value
+ * indeces:= a vector of all the indeces
+ * coeff:= mapping from index to coefficients (map)
+ * vecCoeff:= vector of coefficient for indeces
+ * allCards:= is the product of all the cardinalities
+ * values:= values stored in the Tensor
+ * rank:= rank of the the Tensor
  */
 typedef std::complex<double> cx_d;
 
 class Tensor {
 public:
-    std::vector<Index> indeces;
-    std::vector<cx_d> values; /// complex<double> double matrix from armadillo package
-    long allCards;
+    std::vector<Index> indeces; /// vector of Indexes of the Tensor
+    std::vector<cx_d> values; /// complex<double> vector of values
+    long allCards; /// product of all cardinalities
     int rank; /// rank of the Tensor (number of indeces)
     std::map<std::string, long> coeff;/// mapping from Index to the coefficient
     std::vector<int> vecCoeff; /// vector mapping from index to the coefficient
-
-    // arma::cx_mat matRepresentation;
 
     /**
      * constructors
@@ -37,7 +38,23 @@ public:
     Tensor(std::vector<Index> & indxs);
     Tensor(){};
     ~Tensor();
+
+    /**
+     * prodCards
+     * finding the allCards of the tensor and filling the cardinality table
+     * in the coeff.
+     *
+     * return the full cardinality of the Tensor
+     */
     long prodCards();
+
+    /**
+     * printing the tensor
+     * receiving an int for number of elements to print on one line
+     * param brk number of elements before a line break
+     * does a pretty printing of complex numbers
+     * return void
+     */
     void print(int brk);
 
     /**

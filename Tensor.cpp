@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cassert>
 #include "Tensor.h"
 
 using namespace std;
@@ -515,11 +516,6 @@ void Tensor::printIndeces() const{
 vector<int>
 Tensor::mapFinder(const vector<Index> fullIndeces) const {
     vector<int> idxMap;
-    // for (int i = 0; i < fullIndeces.size(); ++i)
-    //     {
-    //         cout << fullIndeces[i].name << "\t";
-    //     }
-    // cout << endl;
     for (int i = 0; i < indeces.size(); ++i)
     {
         for (int j = 0; j < fullIndeces.size(); ++j)
@@ -557,17 +553,52 @@ cx_d Tensor::getValueOfAsgn(const vector<int> asgns) const {
 
 /**
  * slice
- * slicing a Tensor in one index
+ * slicing a Tensor in one index (from, upto)
  *
  * param index index to be sliced
  * param from start
- * param upto end
+ * param upto end but not including the end
  *
  * return Tensor a sliced new Tensor
  */
 Tensor Tensor::slice(Index index, int from, int upto) {
-    Tensor result;
+    //cout << "starting slice" << endl;
+    // checking for correct input
+    assert(from > -1);
+    assert(upto > -1 && upto > from && upto < index.card);
+
+    // check to see whether index is in the Tensor
+    //cout << "check" << endl;
+    int idx = -1;
+    for (int i=0; i < indeces.size(); ++i){
+        if (indeces[i] == index){
+            idx = i;
+            break;
+        }
+    }
+    assert(idx > -1); // asserting the index to be in indeces
+    //cout << "assertion passed" << endl;
+    // reducing the index
+    vector<Index> newIndeces = indeces;
+    newIndeces[idx].card = upto-from;
+
+    Tensor result(newIndeces);
+    // placing the values
+    long card_before = vecCoeff[idx];
+    long card_base = card_before * indeces[idx].card;
+    long card_after = allCards / (card_base);
+    long idx_start, idx_end;
+    //cout << "start the filling of values" << endl;
+    for (int i=0; i < card_after; ++i ){
+        idx_start = i * card_base + card_before * from;
+        idx_end = i * card_base + card_before * upto;
+        for (int j = idx_start; j < idx_end; ++j){
+            //cout << j << endl;
+            result.values.push_back(values[j]);
+        }
+    }
+
     return result;
 }
-
+p
 //  LocalWords:  colFinal rowFinal
