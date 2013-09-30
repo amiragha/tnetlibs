@@ -600,5 +600,4 @@ Tensor Tensor::slice(Index index, int from, int upto) {
 
     return result;
 }
-p
 //  LocalWords:  colFinal rowFinal
