@@ -94,7 +94,7 @@ IDMRG::~IDMRG(){
 int
 IDMRG::lambda_size_trunc (const vec & S){
     double svalue;
-    double threshold = 1.0e-9;
+    double threshold = 1.0e-15;
     int nextD = 0;
     for (nextD = 0; nextD < S.size(); ++nextD){
         svalue = S[nextD];
@@ -544,7 +544,7 @@ void IDMRG::canonicalize(Tensor A, Tensor B, int D, int nextD){
     // check for compatibility of left and right
     assert (lastD_right == lastD_left);
     int lastD = lastD_right;
-
+    //int lastD = 2;
     if (lastD != D){
         cout << "D is : " << D << " and lastD is : " << lastD << endl;
         // performing needed truncaton
@@ -552,8 +552,8 @@ void IDMRG::canonicalize(Tensor A, Tensor B, int D, int nextD){
         B.reIndex(mkIdxSet(nru, pru, sur));
         A = A.slice(plu,0,lastD).slice(nlu,0,lastD);
         B = B.slice(nru,0,lastD).slice(pru,0,lastD);
-	canonicalize(A,B,lastD,lastD);
-	return;
+        canonicalize(A,B,lastD,lastD);
+        return;
         // X, Y
 
     } else
@@ -680,6 +680,7 @@ cx_vec
 IDMRG::Lanczos(){
 
     cout << "starting lanczos!" << endl;
+    double r_threshold = 1.0e-10;
     cx_vec r, trial, final;
     cx_mat Q;
     cx_vec q;
@@ -687,30 +688,42 @@ IDMRG::Lanczos(){
     vec eigenvals;
     double error = 1.0;
     vector<double> alphas, betas;
-    int i,cycle;
-    int lanczos_cycle_max = 50;
-    // first round
+    int i,step_counter = 0;
     r= guess.toVec();
-    cycle = 0;
-    while(true){
-        //cout << "hoy" << endl;
-        // cleaning alpha and beta
+    //cout << "size of r is " << norm(r,2) <<endl;
+    r = r/norm(r,2);
+    trial = r; // for fidelity calculation
+    double eigenresult;
+    bool restart;
+    while (error > 1.0e-15){
+        restart = false;
+        cout << "starting a round" << endl;
+        // clearing alphas and betas
         alphas.clear();
         betas.clear();
 
-        q = r/norm(r,2);
-        trial = q; //for fidelity calculation
+        // first round (here r is normalized)
+        assert(abs(norm(r,2) - 1.0) < 1.0e-14);
+        q = r;
         r = operateH(q);
         alphas.push_back(cdot(q,r).real());
+
         r = r - (alphas[0] * q);
         betas.push_back(norm(r,2));
+
+        // if r is already a eigenvector repot that
+        if (betas[0] < r_threshold){
+            r = r + (alphas[0] * q);
+            r = r / norm(r,2);
+            eigenresult = alphas[0];
+            break;
+        }
+
         Q = q;
         T << alphas[0];
-
-        //i = 0;
+        i = 0;
         //rounds
-        for (i = 0; i < lanczos_cycle_max; ++i){
-            //cout << i << endl;
+        while (true){
             q = r/betas[i];
             r = operateH(q) - betas[i] * Q.col(i);
             alphas.push_back(cdot(q,r).real());
@@ -720,9 +733,11 @@ IDMRG::Lanczos(){
             r = r - Q * (Q.t() * r);
 
             betas.push_back(norm(r,2));
+            if (betas[i+1] < r_threshold)
+                restart = true;
             Q = join_rows(Q,q);
 
-            // constructing the T matrix
+            // expanding the T matrix
             T.resize(i+2,i+2);
             T(i+1,i+1) = alphas[i+1];
             T(i+1,i) = betas[i];
@@ -734,25 +749,21 @@ IDMRG::Lanczos(){
             // Error estimation and convergence test
             // beta * eigenvecs last row
             error = betas[i+1] * eigenvecs(i+1,0);
-            if (error < 0.0)
-                error = -error;
-            if ( error< 1.0e-15)
+            if ( abs(error) < 1.0e-15 || restart)
                 break;
+            ++i;
         }
-
+        step_counter +=i;
         r = Q*eigenvecs.col(0);
-        if (error < 1.0e-14)
-            break;
-        cycle++;
+        eigenresult = eigenvals(0);
     }
     // fidelity calculations
     cout << "error: " << error
-         << " , number of steps : " << i+cycle*lanczos_cycle_max << endl;
-    //final = Q*eigenvecs.col(i+1);
+         << " , number of steps : " << i+1 << endl;
     //final = Q*eigenvecs.col(0);
     final = r;
     //energy.push_back(eigenvals(i+1));
-    energy.push_back(eigenvals(0));
+    energy.push_back(eigenresult);
     cx_d f = cdot(trial,final);
     cout << "trial \\cdot final"<< f << endl;
     double fid = 1 - sqrt(f.real()*f.real()+f.imag()*f.imag());
