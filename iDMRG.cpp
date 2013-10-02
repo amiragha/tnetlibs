@@ -722,7 +722,9 @@ IDMRG::Lanczos(){
         betas.clear();
 
         // first round (here r is normalized)
-        assert(abs(norm(r,2) - 1.0) < 1.0e-14);
+        if (abs(norm(r,2) - 1.0) < 1.0e-13)
+            cout << norm(r,2) - 1.0 << endl;
+        assert(abs(norm(r,2) - 1.0) < 1.0e-13);
         q = r;
         r = operateH(q);
         alphas.push_back(cdot(q,r).real());
