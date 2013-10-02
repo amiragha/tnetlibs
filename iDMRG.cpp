@@ -485,10 +485,11 @@ void IDMRG::canonicalize(Tensor A, Tensor B, int D, int nextD){
      * Lambar = pru, ou
      */
     // printing gammas
-    A.printIndeces();
-    B.printIndeces();
-    cout << "A :" << endl << A.toMat(mkIdxSet(plu,sul),mkIdxSet(nlu)) << endl;
-    cout << "B :" << endl << B.toMat(mkIdxSet(nru,sur),mkIdxSet(pru)) << endl;
+
+    // A.printIndeces();
+    // B.printIndeces();
+    // cout << "A :" << endl << A.toMat(mkIdxSet(plu,sul),mkIdxSet(nlu)) << endl;
+    // cout << "B :" << endl << B.toMat(mkIdxSet(nru,sur),mkIdxSet(pru)) << endl;
 
     Lambar.fromMat(dlambar,mkIdxSet(pru), mkIdxSet(ou));
     A.reIndex(mkIdxSet(vu,sul,gml));
@@ -506,6 +507,25 @@ void IDMRG::canonicalize(Tensor A, Tensor B, int D, int nextD){
     cout << "left : " << endl << Vecvals << endl;
     Y = Vecvecs*diagmat(sqrt(Vecvals));
     Y = Y.st();
+
+    // exact eigenvalue calculation
+    Tensor tempo = UP_tensor * DN_tensor;
+    tempo.rearrange(mkIdxSet(vd,vu,od,ou));
+    cx_mat tempovec;
+    cx_vec tempoval;
+    vec tempoval_sym;
+    eig_gen(tempoval, tempovec, tempo.toMat(2,2));
+    uword sss;
+    vec absvals = abs(tempoval);
+    absvals.max(sss);
+    cout << "transfer matrix eigenvalues" << endl;
+    cout << tempoval << endl;
+    cx_mat tempo2 = tempovec.col(sss);
+    tempo2 = tempo2/tempovec(sss,0);
+    tempo2.reshape(D,D);
+    eig_sym(tempoval_sym, tempo2);
+    cout << "exact left" << endl;
+    cout << tempoval_sym << endl;
 
     // the eigenvalue of sorted in ascending order
     int lastD_left;
@@ -554,7 +574,6 @@ void IDMRG::canonicalize(Tensor A, Tensor B, int D, int nextD){
         B = B.slice(nru,0,lastD).slice(pru,0,lastD);
         canonicalize(A,B,lastD,lastD);
         return;
-        // X, Y
 
     } else
         lastD = D;
@@ -564,13 +583,9 @@ void IDMRG::canonicalize(Tensor A, Tensor B, int D, int nextD){
     // defining new lambda and new gamma
     vec new_lambda_vec;
     cx_mat U,V;
-    // cout << "old_lambda" << old_lambda <<endl;
-    // cout << "Y" << Y <<endl;
-    // cout << "X" << X <<endl;
     svd(U, new_lambda_vec, V, (Y * old_lambda * X) );
     cx_mat templeft_mat, tempright_mat;
     Tensor templeft, tempright, rLambar, lLambar, new_Gamma, new_lambda;
-    // cout << "V" << V << endl;
     rLambar = Lambar;
     lLambar = Lambar;
     A.reIndex(mkIdxSet(plu, sul, gml));
@@ -583,8 +598,12 @@ void IDMRG::canonicalize(Tensor A, Tensor B, int D, int nextD){
     tempright_mat = inv(Y) * U;
     tempright.fromMat(tempright_mat,mkIdxSet(tr),mkIdxSet(ru));
     new_Gamma = templeft *  lLambar * A * Lam * B * rLambar * tempright;
-    new_Gamma.printIndeces();
+    //new_Gamma.printIndeces();
     new_lambda.fromMat(eyeD * diagmat(new_lambda_vec), mkIdxSet(ru),mkIdxSet(ou));
+
+    // putting results into the class
+    canonical_Lambda = new_lambda_vec % new_lambda_vec; // element-wise multiplication
+    canonical_Gamma = new_Gamma;
 
     // checking canonicalization
     cout << "checking canonicalization" << endl;
@@ -798,7 +817,6 @@ cx_d IDMRG::arnoldi_canonical(Tensor & V){
         // operating UP DN V
         Vtemp.fromVec(Q.col(i),mkIdxSet(vu,vd));
         Vtemp = (Vtemp * UP_tensor) * DN_tensor;
-        //Vtemp.printIndeces();
         r = Vtemp.toVec();
         // orthogonalization step
         h = Q.t() * r;
@@ -814,11 +832,7 @@ cx_d IDMRG::arnoldi_canonical(Tensor & V){
         }
         //cout << T << endl;
         hbefore = norm(r,2);
-        if (abs(hbefore) < 1.0e-15)
-            break;
 
-        if (i > 100)
-            break;
         // eigensolving T
         eig_gen(eigenvals, eigenvecs, T);
         // eigenvals are not ordered
@@ -826,27 +840,34 @@ cx_d IDMRG::arnoldi_canonical(Tensor & V){
         vec absvals = abs(eigenvals);
         absvals.max(sss);
 
+        resV = Q * eigenvecs.col(sss);
+
+        if (abs(hbefore) < 1.0e-15)
+            break;
+
+        if (i > 100)
+            break;
+
         // convergence
         // cout << "eigenvals" << endl;
         // cout << abs(eigenvals) << endl;
         // cout << "maximum eigenvalue is" << endl;
-        // Cout << "with index : "<< sss << endl;
+        // cout << "with index : "<< sss << endl;
         // cout << "eigenvecs" << endl << eigenvecs << endl;
         // cout << i << endl;
         errors = abs(eigenvecs.row(i)).st() * hbefore;
         // cout << "errors" << endl;
         // cout << errors<< endl;
-        // cout << "with error" << endl;
-        // cout << errors(sss) << endl;
+        //cout << "with error" << endl;
+        //cout << errors(sss) << endl;
         error = errors(sss);
         //cout << error << endl;
-        resV = Q * eigenvecs.col(sss);
         q = r/hbefore;
         Q = join_rows(Q,q);
 
         i++;
     }
-    //cout << "result is :" << eigenvals(sss) << endl;
+    cout << "result is :" << eigenvals(sss) << endl;
     V.fromVec(resV, mkIdxSet(vu,vd));
     cout << "finished in : " << i << "steps" << endl;
     return eigenvals(sss);
@@ -882,5 +903,11 @@ IDMRG::iterate(){
         cout << endl;
     }
     cout << endl;
-
+    // printing canonicals
+    cout << "canonical_Lambda:" << endl;
+    cout << canonical_Lambda << endl;
+    cout << "Von Neumann entropy:" << endl;
+    cout << -sum(canonical_Lambda % log(canonical_Lambda))/log(2) << endl;
+    cout << "Renyi entropy" << endl;
+    cout << -sum(log(canonical_Lambda % canonical_Lambda)/2)/log(2) << endl;
 }
