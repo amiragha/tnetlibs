@@ -67,7 +67,7 @@ public:
      *
      * return cx_mat the resulting matrix
      */
-    arma::cx_mat toMat (int num_row, int num_col) const;
+    arma::cx_mat toMat (u_int num_row, u_int num_col) const;
 
     arma::cx_mat toMat (const std::vector<Index> & rowIndeces,
                         const std::vector<Index> & colIndeces) const;
@@ -192,7 +192,7 @@ public:
      *
      * return Tensor a sliced new Tensor
      */
-    Tensor slice(Index index, int from, int upto);
+    Tensor slice(Index index, u_int from, u_int upto);
 };
 
 

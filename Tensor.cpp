@@ -37,7 +37,7 @@ void
 Tensor::print(int brk){
     double real, imag;
     double thresh = 0.0000000001;
-    for (int i = 0; i < values.size(); ++i)
+    for (u_int i = 0; i < values.size(); ++i)
     {
         if (i%brk ==0)
             cout<<endl;
@@ -67,7 +67,7 @@ Tensor::print(int brk){
  * return cx_mat the resulting matrix
  */
 cx_mat
-Tensor::toMat(int num_row, int num_col) const {
+Tensor::toMat(u_int num_row, u_int num_col) const {
     if (num_row + num_col != indeces.size())
         cout << "ERROR: toMat, not equal to number of indeces!" << endl;
     vector<Index> rowIndeces (indeces.begin(), indeces.begin()+num_row);
@@ -93,7 +93,7 @@ Tensor::toMat_aux (const vector<Index> & rowIndeces,
     // defining and initilalizing matCoeff, matcards, matasgns
     vector<int> matcards, matasgns, matcoeff;
     int prod = 1, prodcol, prodrow;
-    for (int i = 0; i < rowIndeces.size(); ++i)
+    for (u_int i = 0; i < rowIndeces.size(); ++i)
     {
         matcards.push_back(rowIndeces[i].card);
         matasgns.push_back(0);
@@ -101,7 +101,7 @@ Tensor::toMat_aux (const vector<Index> & rowIndeces,
         prod *= rowIndeces[i].card;
     }
     prodrow = prod;
-    for (int i = 0; i < colIndeces.size(); ++i)
+    for (u_int i = 0; i < colIndeces.size(); ++i)
     {
         matcards.push_back(colIndeces[i].card);
         matasgns.push_back(0);
@@ -112,7 +112,7 @@ Tensor::toMat_aux (const vector<Index> & rowIndeces,
 
     result = cx_mat(prodrow, prodcol);
 
-    int ridx, cidx;
+    u_int ridx, cidx;
     // initializing iterator
     vector<cx_d>::const_iterator iter = values.begin();
 
@@ -178,12 +178,12 @@ Tensor::fromMat(const cx_mat & matrix,
     values = vector<cx_d> (allCards, cx_d(0.0,0.0));
     //computing the prod of rows
     vector<int> prodRow(1,1);
-    for (int r = 0; r < row.size(); ++r)
+    for (u_int r = 0; r < row.size(); ++r)
         prodRow.push_back(prodRow[r]*row[r].card);
 
     //computing the prod of cols
     vector<int> prodCol(1,1);
-    for (int c = 0; c < col.size(); ++c)
+    for (u_int c = 0; c < col.size(); ++c)
         prodCol.push_back(prodCol[c]*col[c].card);
 
 
@@ -280,7 +280,7 @@ Tensor::similarities(const Tensor & other){
     vector<Index> rowFinal;
     vector<Index> colFinal;
     vector<Index> contracting;
-    for (int i = 0; i < indeces.size(); ++i)
+    for (u_int i = 0; i < indeces.size(); ++i)
     {
         if (!other.coeff.count(indeces[i].name))
             rowFinal.push_back(indeces[i]);
@@ -288,7 +288,7 @@ Tensor::similarities(const Tensor & other){
             contracting.push_back(indeces[i]);
     }
 
-    for (int i = 0; i < other.indeces.size(); ++i)
+    for (u_int i = 0; i < other.indeces.size(); ++i)
     {
         if (!coeff.count(other.indeces[i].name))
             colFinal.push_back(other.indeces[i]);
@@ -331,21 +331,21 @@ Tensor::operator * (const Tensor & other){
 
     // creating a new set of indeces from the result
     vector<Index> indecesFinal (rowFinal);
-    for (int i = 0; i < colFinal.size(); ++i)
+    for (u_int i = 0; i < colFinal.size(); ++i)
         indecesFinal.push_back(colFinal[i]);
 
     // calculating the cardinalities
-    int rowCard = 1, colCard = 1;
-    for (int r = 0; r < rowFinal.size(); ++r)
+    u_int rowCard = 1, colCard = 1;
+    for (u_int r = 0; r < rowFinal.size(); ++r)
         rowCard *=rowFinal[r].card;
-    for (int c = 0; c < colFinal.size(); ++c)
+    for (u_int c = 0; c < colFinal.size(); ++c)
         colCard *=colFinal[c].card;
     // cout << rowCard << "\t" << colCard << endl;
 
     Tensor result(indecesFinal);
-    for (int c = 0; c < colCard; ++c)
+    for (u_int c = 0; c < colCard; ++c)
     {
-        for (int r = 0; r < rowCard; ++r)
+        for (u_int r = 0; r < rowCard; ++r)
         {
             result.values.push_back(res(r,c));
         }
@@ -368,7 +368,7 @@ Tensor::operator + (const Tensor & other){
     if (indeces.size() != other.indeces.size())
         equal = false;
     else {
-        for (int i = 0; i < indeces.size(); ++i)
+        for (u_int i = 0; i < indeces.size(); ++i)
         {
             if (indeces[i] == other.indeces[i])
                 continue;
@@ -376,18 +376,17 @@ Tensor::operator + (const Tensor & other){
         }
     }
 
-    if (!equal)
-        cout << "ERROR: + on not equal indeces Tensors";
-    else
-    {
-        // create a new Tensor
-        Tensor res(indeces);
-        res.prodCards();
-        res.values = vector<cx_d> (values.size(),cx_d(0.0,0.0));
-        for (int i = 0; i < values.size(); ++i)
-            res.values[i] = values[i] + other.values[i];
-        return res;
-    }
+    // checking non equality on indeces for two tensors
+    assert (equal);
+
+
+    // create a new Tensor
+    Tensor res(indeces);
+    res.prodCards();
+    res.values = vector<cx_d> (values.size(),cx_d(0.0,0.0));
+    for (u_int i = 0; i < values.size(); ++i)
+        res.values[i] = values[i] + other.values[i];
+    return res;
 }
 
 /**
@@ -400,7 +399,7 @@ Tensor::operator + (const Tensor & other){
  */
 Tensor&
 Tensor::operator / (double num){
-    for (int i = 0; i < values.size(); ++i)
+    for (u_int i = 0; i < values.size(); ++i)
     {
         values[i] = values[i]/num;
     }
@@ -419,7 +418,7 @@ Tensor::prodCards(){
     long prod = 1;
     coeff.clear();
     vecCoeff.clear();
-    for (int idx = 0; idx < indeces.size(); ++idx)
+    for (u_int idx = 0; idx < indeces.size(); ++idx)
     {
         coeff[indeces[idx].name] = prod;
         vecCoeff.push_back(prod);
@@ -438,9 +437,8 @@ Tensor::prodCards(){
  */
 Tensor
 Tensor::conjugate (){
-    double imaginary;
     Tensor result(indeces);
-    for (int i = 0; i < values.size(); ++i)
+    for (u_int i = 0; i < values.size(); ++i)
         result.values.push_back(cx_d(values[i].real(), -values[i].imag()));
     return result;
 }
@@ -483,9 +481,9 @@ Tensor::rearrange(const vector<Index> & newOrder){
     vector<cx_d> oldvalues = values;
     vector<long> newCards(1,1);
     int idx, ix_temp;
-    for (int i = 0; i < newOrder.size(); ++i)
+    for (u_int i = 0; i < newOrder.size(); ++i)
         newCards.push_back(newOrder[i].card*newCards[i]);
-    for (int ix = 0; ix < values.size(); ++ix)
+    for (u_int ix = 0; ix < values.size(); ++ix)
     {
         idx = 0;
         ix_temp = ix;
@@ -501,7 +499,7 @@ Tensor::rearrange(const vector<Index> & newOrder){
 }
 
 void Tensor::printIndeces() const{
-    for (int i = 0; i < indeces.size(); ++i)
+    for (u_int i = 0; i < indeces.size(); ++i)
         cout << indeces[i].name << ":" <<indeces[i].card << "\t";
     cout << endl;
 }
@@ -516,9 +514,9 @@ void Tensor::printIndeces() const{
 vector<int>
 Tensor::mapFinder(const vector<Index> fullIndeces) const {
     vector<int> idxMap;
-    for (int i = 0; i < indeces.size(); ++i)
+    for (u_int i = 0; i < indeces.size(); ++i)
     {
-        for (int j = 0; j < fullIndeces.size(); ++j)
+        for (u_int j = 0; j < fullIndeces.size(); ++j)
         {
             if (indeces[i] == fullIndeces[j])
             {
@@ -546,7 +544,7 @@ Tensor::mapFinder(const vector<Index> fullIndeces) const {
 cx_d Tensor::getValueOfAsgn(const vector<int> asgns) const {
     // finding the index of asgn for values
     int idx = 0;
-    for (int i = 0; i < asgns.size(); ++i)
+    for (u_int i = 0; i < asgns.size(); ++i)
         idx += asgns[i]*vecCoeff[i];
     return values[idx];
 }
@@ -561,16 +559,16 @@ cx_d Tensor::getValueOfAsgn(const vector<int> asgns) const {
  *
  * return Tensor a sliced new Tensor
  */
-Tensor Tensor::slice(Index index, int from, int upto) {
+Tensor Tensor::slice(Index index, u_int from, u_int upto) {
     //cout << "starting slice" << endl;
     // checking for correct input
-    assert(from > -1);
-    assert(upto > -1 && upto > from && upto < index.card);
+    assert(from > 0 || from == 0);
+    assert(upto > from && upto < index.card);
 
     // check to see whether index is in the Tensor
     //cout << "check" << endl;
     int idx = -1;
-    for (int i=0; i < indeces.size(); ++i){
+    for (u_int i=0; i < indeces.size(); ++i){
         if (indeces[i] == index){
             idx = i;
             break;

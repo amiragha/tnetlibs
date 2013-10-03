@@ -10,8 +10,10 @@ using namespace arma;
 /**
  * constructors
  */
-IDMRG::IDMRG(cx_mat & mHamilt,int Bdim, int dim,int mD, double con_thresh){
+IDMRG::IDMRG(cx_mat & mHamilt, u_int Bdim, u_int dim, u_int mD,
+             double con_thresh, bool in_verbose, string logfile){
 
+    verbose = in_verbose;
     B = Bdim;
     d = dim;
     maxD = mD;
@@ -19,8 +21,7 @@ IDMRG::IDMRG(cx_mat & mHamilt,int Bdim, int dim,int mD, double con_thresh){
     convergence_threshold = con_thresh;
 
     // checking the sizes of the hamiltonian with the given Bdim and dim
-    // TO-DO : change this to assert
-    cout << mHamilt.size() << "==" << d * Bdim *Bdim * d << endl;
+    assert (mHamilt.size() == d * Bdim * Bdim * d);
 
     cx_mat matHamilt, matHamilt_lmost, matHamilt_rmost;
     matHamilt = mHamilt;
@@ -73,9 +74,12 @@ IDMRG::IDMRG(cx_mat & mHamilt,int Bdim, int dim,int mD, double con_thresh){
     Hamilt.fromMat(matHamilt, mkIdxSet(sd,bl), mkIdxSet(su,br));
 
     iteration = 0;
+
+    lfout.open(logfile.c_str());
     // start the initial setup
-    zeroth_iter(true);
+    zeroth_iter();
     iterate();
+    lfout.close();
 }
 
 IDMRG::~IDMRG(){
@@ -91,11 +95,11 @@ IDMRG::~IDMRG(){
  *
  * return int nextD
  */
-int
+u_int
 IDMRG::lambda_size_trunc (const vec & S){
     double svalue;
     double threshold = 1.0e-15;
-    int nextD = 0;
+    u_int nextD = 0;
     for (nextD = 0; nextD < S.size(); ++nextD){
         svalue = S[nextD];
         if (svalue < 0.0)
@@ -107,7 +111,9 @@ IDMRG::lambda_size_trunc (const vec & S){
     if (nextD > maxD)
         nextD = maxD;
 
-    cout << "next D is " << nextD << " maxD : " << maxD << endl;
+    if (verbose)
+        lfout << "nexnt D is " << nextD << " maxD : " << maxD << endl;
+
     // check for potential mistakes like double inserts
     matDims.push_back(nextD);
     return nextD;
@@ -119,9 +125,9 @@ IDMRG::lambda_size_trunc (const vec & S){
  * two site lattice (a part of the initialization step)
  */
 void
-IDMRG::zeroth_iter(bool verbose){
+IDMRG::zeroth_iter(){
     if (verbose)
-        cout << "Zeroth level starting" << endl;
+        lfout << "Zeroth level starting" << endl;
 
     int nextD;
 
@@ -131,7 +137,7 @@ IDMRG::zeroth_iter(bool verbose){
     eig_sym(eigenvals,eigenvecs,W.toMat(2,2));
 
     if (verbose)
-        cout << "eigenvals: " << endl << eigenvals << endl;
+        lfout << "eigenvals: " << endl << eigenvals << endl;
 
     /*
      * Note :
@@ -150,7 +156,7 @@ IDMRG::zeroth_iter(bool verbose){
     nextD = lambda_size_trunc(S);
 
     if (verbose)
-        cout << "nextD = " << nextD << "   ";
+        lfout << "nextD = " << nextD << "   ";
 
     // the truncation step
     cx_mat U_trunc = U.cols(0, nextD-1);
@@ -163,7 +169,7 @@ IDMRG::zeroth_iter(bool verbose){
     lambda.push_back(S_trunc);
 
     if (verbose)
-        cout << "lambda 0 :" << endl << lambda[0] << endl;
+        lfout << "lambda 0 :" << endl << lambda[0] << endl;
 
     // updating Left and Right
     // for the zeroth level it happens here
@@ -214,13 +220,14 @@ IDMRG::zeroth_iter(bool verbose){
  * go one step forward in the iDMRG algorithm
  */
 void
-IDMRG::do_step(bool verbose){
-    cout << endl;
+IDMRG::do_step(){
     iteration++;
-    if (verbose)
-        cout << "Starting iteration number : " << iteration << endl;
+    if (verbose){
+        lfout << endl;
+        lfout << "Starting iteration number : " << iteration << endl;
+    }
 
-    int nextD, D = matDims.back();
+    u_int nextD, D = matDims.back();
 
     cx_mat ksiVec = Lanczos();
     //cout << "ksiVec" << endl << ksiVec << endl;
@@ -263,7 +270,7 @@ IDMRG::do_step(bool verbose){
     // lambda size check
     nextD = lambda_size_trunc(S);
     if (verbose)
-        cout << "nextD = " << nextD << "   ";
+        lfout << "nextD = " << nextD << "   ";
 
     // truncation step
     cx_mat U_trunc = U.cols(0, nextD-1);
@@ -278,8 +285,7 @@ IDMRG::do_step(bool verbose){
     mat S_trunc_mat = diagmat(S_trunc);
 
     if (verbose){
-        //cout << "S" << endl << S << endl;
-        cout << "lambda " << iteration+1 << endl << lambda.back() << endl;
+        lfout << "lambda " << iteration+1 << endl << lambda.back() << endl;
     }
 
     // calculating guess for the next iteration
@@ -295,9 +301,7 @@ IDMRG::do_step(bool verbose){
  * and correctly calculated a guess (trial) tensor for lanczos to use
  */
 void IDMRG::guess_calculate(const cx_mat & U, const cx_mat & V,
-                            const mat & S, int D, int nextD){
-    // TO-DO : rotation check
-
+                            const mat & S, u_int D, u_int nextD){
     cx_mat newA, newB, left_lambda, right_lambda,u,v;
     mat diags;
     vec s;
@@ -309,7 +313,9 @@ void IDMRG::guess_calculate(const cx_mat & U, const cx_mat & V,
      * and since only we have QR factorization we use it on lft.t() and
      * then find the Q.t() and R.t() to perform a RQ transition
      */
-    cout << "starting left rotation!" << endl;
+    if (verbose)
+        lfout << "starting left rotation!" << endl;
+
     cx_mat lft = (U * S);
     lft.reshape(D,d*nextD);
     svd(u, s, newB, lft);
@@ -323,7 +329,9 @@ void IDMRG::guess_calculate(const cx_mat & U, const cx_mat & V,
      * note: S_trunc * V.t()_trunc is a matrix of nextD*D.d dimension
      * we need to perform svd on the matrix d.nextd*D
      */
-    cout << "starting right rotation1" << endl;
+    if (verbose)
+        lfout << "starting right rotation!" << endl;
+
     cx_mat rgt = (S * V.t()).st();
     rgt.reshape(D, d*nextD);
     svd(newA,s,v,rgt.st());
@@ -347,7 +355,8 @@ void IDMRG::guess_calculate(const cx_mat & U, const cx_mat & V,
      * guesscore is the inverse of the last lambda
      */
     int n = lambda.size()-1;
-    cout << "guess calculation" << endl;
+    if (verbose)
+        lfout << "guess calculation" << endl;
     mat guesscore = inv(diagmat(lambda[n-1]));
 
     // convergence test
@@ -364,6 +373,7 @@ void IDMRG::guess_calculate(const cx_mat & U, const cx_mat & V,
         converged = true;
 
     cx_mat guessMat = newA * right_lambda * guesscore * left_lambda * newB;
+    // if a fully random is needed
     //cx_mat guessMat = randu<cx_mat>(d*nextD,d*nextD);
 
     // Defining new l and r indeces and
@@ -379,7 +389,7 @@ void IDMRG::guess_calculate(const cx_mat & U, const cx_mat & V,
  * given the new A and B, updates Left and Right matrices
  */
 void IDMRG::update_LR(const cx_mat & U, const cx_mat & V,
-                      int D, int nextD){
+                      u_int D, u_int nextD){
 
     // indeces needed
     Index nlu("lu",nextD),nld("ld",nextD),nru("ru",nextD),nrd("rd",nextD);
@@ -397,11 +407,10 @@ void IDMRG::update_LR(const cx_mat & U, const cx_mat & V,
         Left.reIndex(mkIdxSet(plu,b,pld));
         Right.reIndex(mkIdxSet(pru,b,prd));
         // constructing the Left and Right
-        cout << "constructing Left and Right" << endl;
+        if (verbose)
+            lfout << "constructing Left and Right" << endl;
         Left = ((Left * A) * WL) * Astar;
-        //Left.printIndeces();
         Right = ((Right * B) * WR) * Bstar;
-        //Right.printIndeces();
     }
     else canonicalize(A, B, D, nextD);
 
@@ -410,11 +419,12 @@ void IDMRG::update_LR(const cx_mat & U, const cx_mat & V,
  * canonicalize
  * canonicalize the wavefunction using the middle A,B, lambda calculated
  */
-void IDMRG::canonicalize(Tensor A, Tensor B, int D, int nextD){
+void IDMRG::canonicalize(Tensor A, Tensor B, u_int D, u_int nextD){
     // canonicalization
-    cout << "starting Canonilcalization" << endl;
+    if (verbose)
+        lfout << "starting Canonilcalization" << endl;
 
-    int n = lambda.size()-1;
+    u_int n = lambda.size()-1;
 
     /*
      * A and B indeces:
@@ -438,8 +448,10 @@ void IDMRG::canonicalize(Tensor A, Tensor B, int D, int nextD){
      */
     // if D > nextD
     if (D > nextD){
-        cout << "D = " << D << " is larger than nextD = " << nextD
-             << ", truncation has to occur" << endl;
+        if (verbose){
+            lfout << "D = " << D << " is larger than nextD = " << nextD
+                  << ", trunrcation has to occur" << endl;
+        }
         // reduce D to nextD
         D = nextD;
         // A and B truncation
@@ -452,8 +464,8 @@ void IDMRG::canonicalize(Tensor A, Tensor B, int D, int nextD){
     }
 
     // if D < nextD
-    if (D != nextD)
-        cout << "WARNING: D != nextD in canonicalization" << endl;
+    if (D != nextD && verbose)
+        lfout << "WARNING: D != nextD in canonicalization" << endl;
 
     // according to mcculloch
     /*
@@ -485,26 +497,29 @@ void IDMRG::canonicalize(Tensor A, Tensor B, int D, int nextD){
      * Lambar = pru, ou
      */
     // printing gammas
-
+    //if (verbose){
     // A.printIndeces();
     // B.printIndeces();
-    // cout << "A :" << endl << A.toMat(mkIdxSet(plu,sul),mkIdxSet(nlu)) << endl;
-    // cout << "B :" << endl << B.toMat(mkIdxSet(nru,sur),mkIdxSet(pru)) << endl;
-
+    // lfout << "A :" << endl << A.toMat(mkIdxSet(plu,sul),mkIdxSet(nlu)) << endl;
+    // lfout << "B :" << endl << B.toMat(mkIdxSet(nru,sur),mkIdxSet(pru)) << endl;
+    //}
+    cx_d arnoldi_res;
     Lambar.fromMat(dlambar,mkIdxSet(pru), mkIdxSet(ou));
     A.reIndex(mkIdxSet(vu,sul,gml));
     B.reIndex(mkIdxSet(gmr,pru,sur));
     UP_tensor = A * Lam * B * Lambar;
-    UP_tensor.printIndeces();
     DN_tensor = UP_tensor.conjugate();
     DN_tensor.reIndex(mkIdxSet(vd,sul,sur,od));
     Vec.fromVec(randu<cx_vec>(D*D),mkIdxSet(vu,vd));
-    cout << arnoldi_canonical(Vec) << endl;
+    arnoldi_res = arnoldi_canonical(Vec);
+    if (verbose)
+        lfout << arnoldi_res << endl;
     Vecmat = Vec.toMat(1,1);
     //Vecmat = (Vecmat + Vecmat.t())/2;
     Vecmat = Vecmat/Vecmat(0,0);
     eig_sym(Vecvals,Vecvecs,Vecmat);
-    cout << "left : " << endl << Vecvals << endl;
+    if (verbose)
+        lfout << "left : " << endl << Vecvals << endl;
     Y = Vecvecs*diagmat(sqrt(Vecvals));
     Y = Y.st();
 
@@ -518,17 +533,19 @@ void IDMRG::canonicalize(Tensor A, Tensor B, int D, int nextD){
     uword sss;
     vec absvals = abs(tempoval);
     absvals.max(sss);
-    cout << "transfer matrix eigenvalues" << endl;
-    cout << tempoval << endl;
     cx_mat tempo2 = tempovec.col(sss);
     tempo2 = tempo2/tempovec(sss,0);
     tempo2.reshape(D,D);
     eig_sym(tempoval_sym, tempo2);
-    cout << "exact left" << endl;
-    cout << tempoval_sym << endl;
+    if (verbose){
+        lfout << "transfer matrix eigenvalues" << endl;
+        lfout << tempoval << endl;
+        lfout << "exact left" << endl;
+        lfout << tempoval_sym << endl;
+    }
 
     // the eigenvalue of sorted in ascending order
-    int lastD_left;
+    u_int lastD_left;
     for (lastD_left = 0; lastD_left < Vecvals.size(); ++lastD_left){
         if (abs(Vecvals[lastD_left]) > 1.0e-10)
             break;
@@ -541,20 +558,22 @@ void IDMRG::canonicalize(Tensor A, Tensor B, int D, int nextD){
     Lam.reIndex(mkIdxSet(gml,gmr));
     Lambar.reIndex(mkIdxSet(ou,plu));
     UP_tensor = Lambar * A * Lam * B;
-    UP_tensor.printIndeces();
     DN_tensor = UP_tensor.conjugate();
     DN_tensor.reIndex(mkIdxSet(od,sul,vd,sur));
     Vec.fromVec(randu<cx_vec>(D*D),mkIdxSet(vu,vd));
-    cout << arnoldi_canonical(Vec) << endl;
+    arnoldi_res = arnoldi_canonical(Vec);
+    if (verbose)
+        lfout << arnoldi_res << endl;
     Vecmat = Vec.toMat(1,1);
     //Vecmat = (Vecmat + Vecmat.t())/2;
     Vecmat = Vecmat/Vecmat(0,0);
     eig_sym(Vecvals,Vecvecs,Vecmat);
     //eig_gen(iVecvals,Vecvecs,Vecmat);
-    cout << "right : " << endl << Vecvals << endl;
+    if (verbose)
+        lfout << "right : " << endl << Vecvals << endl;
     X = Vecvecs*diagmat(sqrt(Vecvals));
 
-    int lastD_right;
+    u_int lastD_right;
     for (lastD_right = 0; lastD_right < Vecvals.size(); ++lastD_right){
         if (abs(Vecvals[lastD_right]) > 1.0e-10)
             break;
@@ -563,10 +582,11 @@ void IDMRG::canonicalize(Tensor A, Tensor B, int D, int nextD){
 
     // check for compatibility of left and right
     assert (lastD_right == lastD_left);
-    int lastD = lastD_right;
+    u_int lastD = lastD_right;
     //int lastD = 2;
     if (lastD != D){
-        cout << "D is : " << D << " and lastD is : " << lastD << endl;
+        if (verbose)
+            lfout << "D is : " << D << " and lastD is : " << lastD << endl;
         // performing needed truncaton
         A.reIndex(mkIdxSet(plu, sul, nlu));
         B.reIndex(mkIdxSet(nru, pru, sur));
@@ -578,12 +598,17 @@ void IDMRG::canonicalize(Tensor A, Tensor B, int D, int nextD){
     } else
         lastD = D;
 
-
-    cout << "defining new lambda and Gamma" << endl;
+    if (verbose){
+        lfout << "old Von-Neuman entropy is : " << renyi(1.0,lambda[n-1])<< endl;
+        lfout << "defining new lambda and Gamma" << endl;
+    }
     // defining new lambda and new gamma
     vec new_lambda_vec;
     cx_mat U,V;
     svd(U, new_lambda_vec, V, (Y * old_lambda * X) );
+    // normalizing new_lambda_vec
+    new_lambda_vec = new_lambda_vec/norm(new_lambda_vec,2);
+
     cx_mat templeft_mat, tempright_mat;
     Tensor templeft, tempright, rLambar, lLambar, new_Gamma, new_lambda;
     rLambar = Lambar;
@@ -606,28 +631,31 @@ void IDMRG::canonicalize(Tensor A, Tensor B, int D, int nextD){
     canonical_Gamma = new_Gamma;
 
     // checking canonicalization
-    cout << "checking canonicalization" << endl;
-    // right check
-    cout << "right check" << endl;
+    if (verbose)
+        lfout << "right canonicalization check" << endl;
+
     UP_tensor = new_Gamma * new_lambda;
     UP_tensor.reIndex(ou,sul,sur,vu);
-    UP_tensor.printIndeces();
     DN_tensor = UP_tensor.conjugate();
     DN_tensor.reIndex(mkIdxSet(od,sul,sur,vd));
     Vec.fromVec(randu<cx_vec>(D*D),mkIdxSet(vu,vd));
-    cout << arnoldi_canonical(Vec) << endl;
-    //Vec.print(20);
+    arnoldi_res = arnoldi_canonical(Vec);
+    if (verbose)
+        lfout << arnoldi_res << endl;
     Vecmat = Vec.toMat(1,1);
     Vecmat = Vecmat/Vecmat(0,0); // killing the irrelevant phase factor
     eig_sym(Vecvals,Vecmat);
-    cout << "right check is : " << endl << Vecvals;
+    if (verbose)
+        lfout << "right check is : " << endl << Vecvals;
+    // TO-DO : add an assert for canonicalization check
 
     // left check
     /*
      * find the product of lambda from left to Gamma and find the new
      * left largest eigenvalue and the corresponding eigenvector
      */
-    cout << "left check" << endl;
+    if (verbose)
+        lfout << "left check" << endl;
     new_Gamma.reIndex(mkIdxSet(lu,sul,sur,ou));
     new_lambda.reIndex(mkIdxSet(vu,lu));
     // now UP_tensor must have Indexes: vu, sul, sur, ou
@@ -635,12 +663,15 @@ void IDMRG::canonicalize(Tensor A, Tensor B, int D, int nextD){
     DN_tensor = UP_tensor.conjugate();
     DN_tensor.reIndex(mkIdxSet(vd,sul,sur,od));
     Vec.fromVec(randu<cx_vec>(D*D),mkIdxSet(vu,vd));
-    cout << arnoldi_canonical(Vec) << endl;
+    arnoldi_res = arnoldi_canonical(Vec);
+    if (verbose)
+        lfout << arnoldi_res << endl;
     //Vec.print(20);
     Vecmat = Vec.toMat(1,1);
     Vecmat = Vecmat/Vecmat(0,0); // killing the irrelevant phase factor
     eig_sym(Vecvals,Vecmat);
-    cout << "left check is : " << endl << Vecvals;
+    if (verbose)
+        lfout << "left check is : " << endl << Vecvals;
 
 }
 
@@ -697,8 +728,8 @@ IDMRG::operateH(cx_vec & q){
  */
 cx_vec
 IDMRG::Lanczos(){
-
-    cout << "starting lanczos!" << endl;
+    if (verbose)
+        lfout << "starting lanczos!" << endl;
     double r_threshold = 1.0e-10;
     cx_vec r, trial, final;
     cx_mat Q;
@@ -709,21 +740,21 @@ IDMRG::Lanczos(){
     vector<double> alphas, betas;
     int i,step_counter = 0;
     r= guess.toVec();
-    //cout << "size of r is " << norm(r,2) <<endl;
     r = r/norm(r,2);
     trial = r; // for fidelity calculation
     double eigenresult;
     bool restart;
     while (error > 1.0e-15){
         restart = false;
-        cout << "starting a round" << endl;
+
+        // first round (here r is normalized)
+        if (abs(norm(r,2) - 1.0) < 1.0e-13 && verbose)
+            lfout << norm(r,2) - 1.0 << endl;
+
         // clearing alphas and betas
         alphas.clear();
         betas.clear();
 
-        // first round (here r is normalized)
-        if (abs(norm(r,2) - 1.0) < 1.0e-13)
-            cout << norm(r,2) - 1.0 << endl;
         assert(abs(norm(r,2) - 1.0) < 1.0e-13);
         q = r;
         r = operateH(q);
@@ -732,7 +763,7 @@ IDMRG::Lanczos(){
         r = r - (alphas[0] * q);
         betas.push_back(norm(r,2));
 
-        // if r is already a eigenvector repot that
+        // if r is already a eigenvector report that
         if (betas[0] < r_threshold){
             r = r + (alphas[0] * q);
             r = r / norm(r,2);
@@ -779,14 +810,16 @@ IDMRG::Lanczos(){
         eigenresult = eigenvals(0);
     }
     // fidelity calculations
-    cout << "error: " << error
-         << " , number of steps : " << i+1 << endl;
     //final = Q*eigenvecs.col(0);
     final = r;
     //energy.push_back(eigenvals(i+1));
     energy.push_back(eigenresult);
     cx_d f = cdot(trial,final);
-    cout << "trial \\cdot final"<< f << endl;
+    if (verbose){
+        lfout << "error: " << error
+              << " , number of steps : " << i+1 << endl;
+        lfout << "trial \\cdot final"<< f << endl;
+    }
     double fid = 1 - sqrt(f.real()*f.real()+f.imag()*f.imag());
     fidelity.push_back(fid);
     return final;
@@ -800,7 +833,8 @@ IDMRG::Lanczos(){
  *
  */
 cx_d IDMRG::arnoldi_canonical(Tensor & V){
-    cout << "arnoldi" << endl;
+    if (verbose)
+        lfout << "arnoldi" << endl;
     Index vu = V.indeces[0];
     Index vd = V.indeces[1];
     Tensor Vtemp;
@@ -851,27 +885,29 @@ cx_d IDMRG::arnoldi_canonical(Tensor & V){
             break;
 
         // convergence
-        // cout << "eigenvals" << endl;
-        // cout << abs(eigenvals) << endl;
-        // cout << "maximum eigenvalue is" << endl;
-        // cout << "with index : "<< sss << endl;
-        // cout << "eigenvecs" << endl << eigenvecs << endl;
-        // cout << i << endl;
+        // lfout << "eigenvals" << endl;
+        // lfout << abs(eigenvals) << endl;
+        // lfout << "maximum eigenvalue is" << endl;
+        // lfout << "with index : "<< sss << endl;
+        // lfout << "eigenvecs" << endl << eigenvecs << endl;
+        // lfout << i << endl;
         errors = abs(eigenvecs.row(i)).st() * hbefore;
-        // cout << "errors" << endl;
-        // cout << errors<< endl;
-        //cout << "with error" << endl;
-        //cout << errors(sss) << endl;
+        // lfout << "errors" << endl;
+        // lfout << errors<< endl;
+        //lfout << "with error" << endl;
+        //lfout << errors(sss) << endl;
         error = errors(sss);
-        //cout << error << endl;
+        //lfout << error << endl;
         q = r/hbefore;
         Q = join_rows(Q,q);
 
         i++;
     }
-    cout << "result is :" << eigenvals(sss) << endl;
+    if (verbose){
+        lfout << "result is :" << eigenvals(sss) << endl;
+        lfout << "finished in : " << i << "steps" << endl;
+    }
     V.fromVec(resV, mkIdxSet(vu,vd));
-    cout << "finished in : " << i << "steps" << endl;
     return eigenvals(sss);
 }
 
@@ -884,32 +920,66 @@ void
 IDMRG::iterate(){
     int N = 1000;
     for (int iter=0; iter < N; ++iter){
-        do_step(true);
+        do_step();
         if (converged)
             break;
     }
 
-    cout << endl;
+    lfout << endl;
 
     int num_particles;
 
-    // printing energy, Fidelity, truncations, D results at each level
-    cout << "ENERGY , fidelity, truncation, D results" << endl;
-    for (int i = 0 ; i < energy.size(); ++i) {
-        num_particles = 2*(i+1);
-        cout << setprecision(10) << energy[i]/num_particles + largestEV << "\t\t";
-        cout << setprecision(10) << fidelity[i] << "\t\t";
-        cout << setprecision(10) << lambda_truncated[i] << "\t\t";
-        cout << setprecision(10) << matDims[i]<< "\t";
-        cout << setprecision(10) << convergence[i];
-        cout << endl;
+    if (verbose){
+        // printing energy, Fidelity, truncations, D results at each level
+        lfout << "ENERGY , fidelity, truncation, D results" << endl;
+        for (u_int i = 0 ; i < energy.size(); ++i) {
+            num_particles = 2*(i+1);
+            lfout << setprecision(10) << energy[i]/num_particles + largestEV << "\t\t";
+            lfout << setprecision(10) << fidelity[i] << "\t\t";
+            lfout << setprecision(10) << lambda_truncated[i] << "\t\t";
+            lfout << setprecision(10) << matDims[i]<< "\t";
+            lfout << setprecision(10) << convergence[i];
+            lfout << endl;
+        }
+        lfout << endl;
+        // printing canonicals
+        lfout << "canonical_Lambda:" << endl;
+        lfout << canonical_Lambda << endl;
+        lfout << "Von Neumann entropy:" << endl;
+        lfout << renyi(1.0,canonical_Lambda) << endl;
     }
-    cout << endl;
-    // printing canonicals
-    cout << "canonical_Lambda:" << endl;
-    cout << canonical_Lambda << endl;
-    cout << "Von Neumann entropy:" << endl;
-    cout << -sum(canonical_Lambda % log(canonical_Lambda))/log(2) << endl;
-    cout << "Renyi entropy" << endl;
-    cout << -sum(log(canonical_Lambda % canonical_Lambda)/2)/log(2) << endl;
+
+    // printing useful information
+    lfout << "finished in " << iteration << " iteration" << endl;
+    lfout << "final truncation error" << endl;
+    lfout << lambda_truncated[energy.size()-1] << endl;
+    lfout << "renyi entropy" << endl;
+    lfout << "alpha\t\t" << "renyi entropy" << endl;
+    for (double alpha = 1.0; alpha < 7.1; alpha+=0.1){
+        lfout << alpha << "\t\t" << renyi(alpha, canonical_Lambda) << endl;
+    }
+}
+
+/**
+ * Renyi entroypy calculator
+ */
+double IDMRG::renyi(double alpha, const vec & L){
+
+    double sumL = sum(L);
+    // check for the sum of lambdas to be equal to 1
+    if ( abs(sumL-1.0) > 1.0e-10 && verbose )
+        lfout << "sum of Lambda squared is : " << sumL << endl;
+    //assert ( abs(sumL-1.0) < 1.0e-10 );
+
+    vec Ltemp;
+    double result;
+    // the resolution of this function is 10^-5
+    if (abs(alpha - 1.0) < 1.0e-5)
+        result = - sum ( L % log2(L) );
+    else {
+        Ltemp = pow(L,alpha);
+        Ltemp = log2(Ltemp);
+        result = - sum( Ltemp/ (1.0-alpha) );
+    }
+    return result;
 }

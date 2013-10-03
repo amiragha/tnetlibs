@@ -2,6 +2,7 @@
  * @file iDMRG.h
  */
 #include "Tensor.h"
+#include <fstream>
 
 #ifndef _IDMRG_H_
 #define _IDMRG_H_
@@ -13,11 +14,13 @@
 
 class IDMRG {
 
+    bool verbose;
+    std::ofstream lfout;
     int iteration; /// current iteration number
-    int maxD; /// maximum size for matrices
-    int B; /// Hamiltonian cardinalitis
-    int d; /// spin cardinality
-    std::vector<int> matDims; /// D at each level
+    u_int maxD; /// maximum size for matrices
+    u_int B; /// Hamiltonian cardinalitis
+    u_int d; /// spin cardinality
+    std::vector<u_int> matDims; /// D at each level
     /*
      * Notes for Tensor indeces:
      * - Hamilt ,
@@ -47,8 +50,9 @@ public:
     /**
      * constructors
      */
-    IDMRG(arma::cx_mat & mHamilt, int Bdim, int dim, int mD,
-          double con_thresh = 1.0e-9);
+    IDMRG(arma::cx_mat & mHamilt, u_int Bdim, u_int dim, u_int mD,
+          double con_thresh = 1.0e-9, bool verbose = false,
+          std::string logfile = "iDMRG_logfile.log");
     ~IDMRG();
 
 private:
@@ -67,20 +71,20 @@ private:
      *
      * return int nextD
      */
-    int lambda_size_trunc (const arma::vec & S);
+    u_int lambda_size_trunc (const arma::vec & S);
 
     /**
      * zeroth_iter
      * managing the zeroth step which are solving for the
      * two site lattice
      */
-    void zeroth_iter(bool verbose = false);
+    void zeroth_iter();
 
     /**
      * do_step
      * go one step forward in the iDMRG algorithm
      */
-    void do_step(bool verbose = false);
+    void do_step();
 
     /**
      * guess_calculate
@@ -89,34 +93,19 @@ private:
      */
 
     void guess_calculate(const arma::cx_mat & U, const arma::cx_mat & V,
-                         const arma::mat & S, int D, int nextD);
+                         const arma::mat & S, u_int D, u_int nextD);
     /**
      * update_LR
      * given the new A and B, updates Left and Right matrices
      */
     void update_LR(const arma::cx_mat & U, const arma::cx_mat & V,
-                   int D, int nextD);
+                   u_int D, u_int nextD);
 
     /**
      * canonicalize
      * canonicalize the wavefunction using the middle A,B, lambda calculated
      */
-    void canonicalize( Tensor A, Tensor B, int D, int nextD);
-
-public:
-
-    /**
-     * operateH
-     * find the effect of bigH(Hamiltonians and Left and Right) on a given
-     * vector
-     */
-    arma::cx_vec operateH(arma::cx_vec & q);
-
-    /**
-     * iterate
-     * Iterate to the convergence
-     */
-    void iterate();
+    void canonicalize( Tensor A, Tensor B, u_int D, u_int nextD);
 
     /**
      * Lanczos
@@ -128,6 +117,15 @@ public:
      */
     arma::cx_vec Lanczos();
 
+
+    /**
+     * operateH
+     * find the effect of bigH(Hamiltonians and Left and Right) on a given
+     * vector
+     */
+    arma::cx_vec operateH(arma::cx_vec & q);
+
+
     /**
      * arnoldi_canonical
      * performs arnoldi algorithms using UP_tensor and DN_tensor
@@ -135,6 +133,18 @@ public:
      *
      */
     cx_d arnoldi_canonical(Tensor & V);
+
+public:
+    /**
+     * iterate
+     * Iterate to the convergence
+     */
+    void iterate();
+
+    /**
+     * Renyi entroypy calculator
+     */
+    double renyi(double alpha, const arma::vec & L);
 };
 
 #endif /* _IDMRG_H_ */

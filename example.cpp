@@ -38,8 +38,8 @@ int main(int argc, char *argv[])
     cx_mat ITF = -kron(PauliZ,PauliZ)-kron(PauliX,I2)/2-kron(I2,PauliX)/2;
 
     // calling ternary MERA
-    // TernaryMera test(ITF, 2, 4, true);
-    // test.buOptimize(30,true, true);
+    TernaryMera test(ITF, 2, 4, true);
+    test.buOptimize(30,true, true);
 
     // example for iDMRG
     // Heisenberg Hamiltonian
@@ -56,7 +56,7 @@ int main(int argc, char *argv[])
     matHamilt.submat(8,6,9,7) = PauliZ;
 
     // calling IDMRG
-    IDMRG testidmrg(matHamilt, 5, 2, 20, 1.0e-4);
+    IDMRG testidmrg(matHamilt, 5, 2, 20, 1.0e-4, true);
 
     return 0;
 

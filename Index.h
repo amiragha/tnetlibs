@@ -9,6 +9,8 @@
 #include <vector>
 #include <map>
 
+typedef unsigned int u_int;
+
 /** class Index
  * a class for representing indeces of a Tensor
  * each Index have string name and a long cardinality
@@ -16,14 +18,14 @@
 class Index {
 public:
     std::string name;
-    long card;
+    u_int card;
 
-    Index(std::string s, int c) : name(s), card(c){};
+    Index(std::string s, u_int c) : name(s), card(c){};
     Index(){};
     ~Index(){};
 
-    void i(std::string s, int c) {name = s; card = c;};
-    void change_card (int newCard);
+    void i(std::string s, u_int c) {name = s; card = c;};
+    void change_card (u_int newCard);
     bool operator ==(const Index & other) const;
     bool operator < (const Index & other);
 };

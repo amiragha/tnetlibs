@@ -2,7 +2,7 @@
 
 using namespace std;
 
-void Index::change_card (int newCard){
+void Index::change_card (u_int newCard){
     card = newCard;
 }
 
