@@ -230,14 +230,13 @@ IDMRG::do_step(){
     u_int nextD, D = matDims.back();
 
     cx_mat ksiVec = Lanczos();
-    //cout << "ksiVec" << endl << ksiVec << endl;
 
     Index lu("lu", D), ru("ru", D),ld("ld", D), rd("rd", D);
 
     /*
      * exact calculation for comparison,
      * indeces of HH = lu,ld,sdl,sul,sdr,sur,ru,rd
-     cout << "left right indeces and w " << endl;
+     lfout << "left right indeces and w " << endl;
      Left.reIndex(mkIdxSet(lu,bl,ld));
      Right.reIndex(mkIdxSet(ru,br,rd));
      Tensor HH = Left * W * Right;
@@ -246,9 +245,9 @@ IDMRG::do_step(){
      cx_mat eigenvecs;
      vec eigenvals;
      eig_sym(eigenvals, eigenvecs, matHH);
-     cout << setprecision(15) <<"groundstate energy = " <<
+     lfout << setprecision(15) <<"groundstate energy = " <<
      eigenvals(0)/(8*(iteration+1)) << endl;
-     cout << setprecision(15) << "fidelity of exact and lanczos :  " <<
+     lfout << setprecision(15) << "fidelity of exact and lanczos :  " <<
      abs(cdot(eigenvecs.col(0),ksiVec)) << endl;
     */
 
@@ -515,34 +514,12 @@ void IDMRG::canonicalize(Tensor A, Tensor B, u_int D, u_int nextD){
     if (verbose)
         lfout << arnoldi_res << endl;
     Vecmat = Vec.toMat(1,1);
-    //Vecmat = (Vecmat + Vecmat.t())/2;
     Vecmat = Vecmat/Vecmat(0,0);
     eig_sym(Vecvals,Vecvecs,Vecmat);
     if (verbose)
         lfout << "left : " << endl << Vecvals << endl;
     Y = Vecvecs*diagmat(sqrt(Vecvals));
     Y = Y.st();
-
-    // exact eigenvalue calculation
-    Tensor tempo = UP_tensor * DN_tensor;
-    tempo.rearrange(mkIdxSet(vd,vu,od,ou));
-    cx_mat tempovec;
-    cx_vec tempoval;
-    vec tempoval_sym;
-    eig_gen(tempoval, tempovec, tempo.toMat(2,2));
-    uword sss;
-    vec absvals = abs(tempoval);
-    absvals.max(sss);
-    cx_mat tempo2 = tempovec.col(sss);
-    tempo2 = tempo2/tempovec(sss,0);
-    tempo2.reshape(D,D);
-    eig_sym(tempoval_sym, tempo2);
-    if (verbose){
-        lfout << "transfer matrix eigenvalues" << endl;
-        lfout << tempoval << endl;
-        lfout << "exact left" << endl;
-        lfout << tempoval_sym << endl;
-    }
 
     // the eigenvalue of sorted in ascending order
     u_int lastD_left;
@@ -755,7 +732,7 @@ IDMRG::Lanczos(){
         alphas.clear();
         betas.clear();
 
-        assert(abs(norm(r,2) - 1.0) < 1.0e-13);
+        assert(abs(norm(r,2) - 1.0) < 1.0e-10);
         q = r;
         r = operateH(q);
         alphas.push_back(cdot(q,r).real());
@@ -866,7 +843,6 @@ cx_d IDMRG::arnoldi_canonical(Tensor & V){
             T(i,i-1) = hbefore;
             T.col(i) = h;
         }
-        //cout << T << endl;
         hbefore = norm(r,2);
 
         // eigensolving T
@@ -881,23 +857,12 @@ cx_d IDMRG::arnoldi_canonical(Tensor & V){
         if (abs(hbefore) < 1.0e-15)
             break;
 
-        if (i > 100)
-            break;
+        // if (i > 100)
+        //     break;
 
         // convergence
-        // lfout << "eigenvals" << endl;
-        // lfout << abs(eigenvals) << endl;
-        // lfout << "maximum eigenvalue is" << endl;
-        // lfout << "with index : "<< sss << endl;
-        // lfout << "eigenvecs" << endl << eigenvecs << endl;
-        // lfout << i << endl;
         errors = abs(eigenvecs.row(i)).st() * hbefore;
-        // lfout << "errors" << endl;
-        // lfout << errors<< endl;
-        //lfout << "with error" << endl;
-        //lfout << errors(sss) << endl;
         error = errors(sss);
-        //lfout << error << endl;
         q = r/hbefore;
         Q = join_rows(Q,q);
 
@@ -942,22 +907,19 @@ IDMRG::iterate(){
             lfout << endl;
         }
         lfout << endl;
-        // printing canonicals
+        // printing canonically
+        lfout << "canonical_Gammas" << endl;
         lfout << "canonical_Lambda:" << endl;
         lfout << canonical_Lambda << endl;
-        lfout << "Von Neumann entropy:" << endl;
-        lfout << renyi(1.0,canonical_Lambda) << endl;
     }
 
     // printing useful information
     lfout << "finished in " << iteration << " iteration" << endl;
     lfout << "final truncation error" << endl;
     lfout << lambda_truncated[energy.size()-1] << endl;
-    lfout << "renyi entropy" << endl;
-    lfout << "alpha\t\t" << "renyi entropy" << endl;
-    for (double alpha = 1.0; alpha < 7.1; alpha+=0.1){
-        lfout << alpha << "\t\t" << renyi(alpha, canonical_Lambda) << endl;
-    }
+    lfout << "Von-Neumann : " << renyi(1.0,canonical_Lambda) << endl;
+    lfout << "Renyi  0.5  : " << renyi(0.5, canonical_Lambda) << endl;
+    lfout << "Renyi  2    : " << renyi(2, canonical_Lambda) << endl;
 }
 
 /**
