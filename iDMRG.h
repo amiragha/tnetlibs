@@ -43,10 +43,10 @@ class IDMRG {
     bool converged;
     double convergence_threshold;
     double largestEV;
-    arma::vec canonical_Lambda;
     Tensor canonical_Gamma;
 
 public:
+    arma::vec canonical_Lambda;
     /**
      * constructors
      */
