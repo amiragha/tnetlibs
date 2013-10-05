@@ -705,9 +705,10 @@ IDMRG::operateH(cx_vec & q){
  */
 cx_vec
 IDMRG::Lanczos(){
+    // TO-DO : improve Lanczos algorithm
     if (verbose)
         lfout << "starting lanczos!" << endl;
-    double r_threshold = 1.0e-10;
+    double r_threshold = 1.0e-12;
     cx_vec r, trial, final;
     cx_mat Q;
     cx_vec q;
@@ -810,8 +811,10 @@ IDMRG::Lanczos(){
  *
  */
 cx_d IDMRG::arnoldi_canonical(Tensor & V){
+    // TO-DO : improve Arnoldi algorithm
     if (verbose)
-        lfout << "arnoldi" << endl;
+        lfout << "starting arnoldi" << endl;
+    double r_threshold = 1.0e-12;
     Index vu = V.indeces[0];
     Index vd = V.indeces[1];
     Tensor Vtemp;
@@ -826,7 +829,8 @@ cx_d IDMRG::arnoldi_canonical(Tensor & V){
     cx_mat eigenvecs;
     cx_vec eigenvals;
     uword sss;
-    while (error > 1.0e-14){
+    bool restart;
+    while (error > 1.0e-15){
         // operating UP DN V
         Vtemp.fromVec(Q.col(i),mkIdxSet(vu,vd));
         Vtemp = (Vtemp * UP_tensor) * DN_tensor;
@@ -854,7 +858,7 @@ cx_d IDMRG::arnoldi_canonical(Tensor & V){
 
         resV = Q * eigenvecs.col(sss);
 
-        if (abs(hbefore) < 1.0e-15)
+        if (abs(hbefore) < r_threshold)
             break;
 
         // if (i > 100)
@@ -896,14 +900,18 @@ IDMRG::iterate(){
 
     if (verbose){
         // printing energy, Fidelity, truncations, D results at each level
-        lfout << "ENERGY , fidelity, truncation, D results" << endl;
+        lfout << "|" <<  setw(15) << "ENERGY" << " |"
+              << setw(16) << "Fidelity" << " |"
+              << setw (16) << "Truncations" << " |" << setw(4) << "D"
+              << " |" << setw(16) << "Convergence" << " |" << endl << endl;
         for (u_int i = 0 ; i < energy.size(); ++i) {
             num_particles = 2*(i+1);
-            lfout << setprecision(10) << energy[i]/num_particles + largestEV << "\t\t";
-            lfout << setprecision(10) << fidelity[i] << "\t\t";
-            lfout << setprecision(10) << lambda_truncated[i] << "\t\t";
-            lfout << setprecision(10) << matDims[i]<< "\t";
-            lfout << setprecision(10) << convergence[i];
+            lfout << "|" << setw(15) << setprecision(8)
+                  << energy[i]/num_particles + largestEV << " |"
+                  << setw(16) << fidelity[i] << " |"
+                  << setw(16) << lambda_truncated[i] << " |"
+                  << setw (4) << matDims[i] << " |"
+                  << setw (16) << convergence[i] << " |";
             lfout << endl;
         }
         lfout << endl;
