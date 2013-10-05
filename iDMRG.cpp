@@ -402,7 +402,7 @@ void IDMRG::update_LR(const cx_mat & U, const cx_mat & V,
     Astar.reIndex(mkIdxSet(pld,sdl,nld));
     Bstar.reIndex(mkIdxSet(nrd,prd,sdr));
 
-    if (!converged){
+    if (!converged && iteration < 100){
         Left.reIndex(mkIdxSet(plu,b,pld));
         Right.reIndex(mkIdxSet(pru,b,prd));
         // constructing the Left and Right
@@ -883,7 +883,7 @@ cx_d IDMRG::arnoldi_canonical(Tensor & V){
 
 void
 IDMRG::iterate(){
-    int N = 1000;
+    int N = 100;
     for (int iter=0; iter < N; ++iter){
         do_step();
         if (converged)
