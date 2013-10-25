@@ -44,9 +44,9 @@ class IDMRG {
     double convergence_threshold;
     double largestEV;
     Tensor canonical_Gamma;
+    arma::vec canonical_Lambda;
 
 public:
-    arma::vec canonical_Lambda;
     /**
      * constructors
      */
@@ -125,7 +125,7 @@ private:
      */
     arma::cx_vec operateH(arma::cx_vec & q);
 
-
+public:
     /**
      * arnoldi_canonical
      * performs arnoldi algorithms using UP_tensor and DN_tensor
@@ -134,7 +134,7 @@ private:
      */
     cx_d arnoldi_canonical(Tensor & V);
 
-public:
+    arma::vec entanglement_spectrum;
     /**
      * iterate
      * Iterate to the convergence
@@ -142,9 +142,42 @@ public:
     void iterate();
 
     /**
+     * get_canonical_lambda
+     * gives canonical lambda which sums to one
+     */
+
+    /**
+     * expectation_onesite
+     * calculates the expectation value of a given one-site operator
+     * using canonical Lambda and Gammma
+     * an example is S_z
+     */
+    double expectation_onesite(arma::cx_mat onesite_op);
+
+    /**
+     * expectation_twosite
+     * calculates the expectation value of a given  two-site operator
+     * using canonical Lambda and Gammma
+     * an example is the energy for NN models
+     */
+    double expectation_twosite(arma::cx_mat twosite_op);
+
+    /**
+     * gsFidelity
+     * calculates the ground state fidelity
+     * given the MPO for left and right Hamiltonians, which are different
+     * for a small amount of change in the desired parameter
+     */
+    double gsFidelity(arma::cx_mat leftmatHamilt,
+                      arma::cx_mat rightmatHamilt);
+    /**
      * Renyi entroypy calculator
      */
     double renyi(double alpha, const arma::vec & L);
+    Tensor get_Gamma() const;
+    arma::vec get_Lambda() const;
 };
 
+double gsFidelity(const IDMRG & left, const IDMRG & right);
+cx_d arnoldi(Tensor & V, const Tensor & up, const Tensor & dn);
 #endif /* _IDMRG_H_ */

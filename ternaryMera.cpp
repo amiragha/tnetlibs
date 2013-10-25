@@ -6,14 +6,14 @@ using namespace arma;
 /**
  * constructors
  */
-TernaryMera::TernaryMera(cx_mat & Hmat, int icard, int fcard, bool verbose) {
+TernaryMera::TernaryMera(cx_mat & Hmat, u_int icard, u_int fcard, bool verbose) {
     if (verbose)
         cout << "Starting intialization of TernaryMera : " << endl;
 
     // setting threshold for double comparison
     thresh = 0.0000001;
     // level cardinalities
-    int c = icard;
+    u_int c = icard;
     while (c < fcard) {
         cards.push_back(c);
         c = c*c*c;
@@ -25,7 +25,7 @@ TernaryMera::TernaryMera(cx_mat & Hmat, int icard, int fcard, bool verbose) {
         cout << "The problem have " << numlevels << " levels." << endl;
 
     // finding the starting Isometries and Unitaries
-    for (int l = 0; l < numlevels; ++l) {
+    for (u_int l = 0; l < numlevels; ++l) {
         give_random_UniIso(l);
     }
     if (verbose)
@@ -40,14 +40,14 @@ TernaryMera::TernaryMera(cx_mat & Hmat, int icard, int fcard, bool verbose) {
     Hamiltonian.push_back(H);
 
     // ascending the Hamiltonian to all levels
-    for (int l = 0; l < numlevels; ++l)
+    for (u_int l = 0; l < numlevels; ++l)
         ascend(l,verbose);
     if (verbose)
         cout << "Initialization of Hamiltonins finished." << endl;
 
     // finding a random DensityMatrix
     Tensor dummy;
-    for (int l = 0; l < numlevels; ++l)
+    for (u_int l = 0; l < numlevels; ++l)
         DensityMatrix.push_back(dummy);
     give_random_density();
     arnoldi(verbose);
@@ -73,7 +73,7 @@ TernaryMera::~TernaryMera(){
  * return void
  */
 void
-TernaryMera::give_random_UniIso(int level){
+TernaryMera::give_random_UniIso(u_int level){
     // check if it's possible to find this level
     if (Unitary.size() != level) {
         cout << "ERROR: can't initialize this level Unitary" << endl;
@@ -163,14 +163,14 @@ void TernaryMera::give_random_density(){
  *
  * return void
  */
-void TernaryMera::ascend (int level, bool verbose){
+void TernaryMera::ascend (u_int level, bool verbose){
     if (verbose)
         cout << "performing ascendig on level " << level << endl;
 
     // checking that the Hamiltonian exist
     if (Hamiltonian.size() < level + 1)
         cout << "ERROR: Hamiltonian at level " << level << " does'nt exist" << endl;
-    int lvl = level;
+    u_int lvl = level;
     // checking for larger levels
     if (level > numlevels-1) lvl = numlevels-1;
     // create a copy of all needed Tensors
@@ -185,7 +185,7 @@ void TernaryMera::ascend (int level, bool verbose){
     Tensor T2S = T1S;
 
     // finding the cardinalities
-    int in = cards[lvl], out;
+    u_int in = cards[lvl], out;
     if (lvl > cards.size()-2)
         out = cards[lvl];
     else
@@ -263,7 +263,7 @@ void TernaryMera::ascend (int level, bool verbose){
  *
  * return void
  */
-void TernaryMera::descend (int level, bool verbose){
+void TernaryMera::descend (u_int level, bool verbose){
     if (verbose)
         cout << "performing descending on level " << level << endl;
 
@@ -361,7 +361,7 @@ void TernaryMera::descend (int level, bool verbose){
  *
  * return Tensor of environment for isometry
  */
-Tensor TernaryMera::iso_env (int level, bool verbose, bool negateH){
+Tensor TernaryMera::iso_env (u_int level, bool verbose, bool negateH){
     if (verbose)
         cout << "calculating the Iso environment for level " << level << endl;
 
@@ -524,7 +524,7 @@ Tensor TernaryMera::iso_env (int level, bool verbose, bool negateH){
  *
  * return Tensor of environment for unitary
  */
-Tensor TernaryMera::uni_env (int level, bool verbose, bool negateH){
+Tensor TernaryMera::uni_env (u_int level, bool verbose, bool negateH){
     if (verbose)
         cout << "calculating the Uni environment for level " << level << endl;
 
@@ -646,7 +646,7 @@ void TernaryMera::arnoldi(bool verbose){
  *
  * return double or a vector of doubles
  */
-double TernaryMera::energy (int level){
+double TernaryMera::energy (u_int level){
     int lvl = level;
     if (level > numlevels-1)
         lvl = numlevels-1;
@@ -670,12 +670,12 @@ vector<double> TernaryMera::energy (bool verbose){
     bool allequal = true;
     vector<double> result;
     // calculating energy at each level and put it at result vector
-    for (int l = 0; l < numlevels + 1; ++l)
+    for (u_int l = 0; l < numlevels + 1; ++l)
         result.push_back(energy(l));
 
     // checking to see whether the energies are equal at all levels
     double delta;
-    for (int i = 1; i < result.size(); ++i) {
+    for (u_int i = 1; i < result.size(); ++i) {
         delta = result[i] - result[0];
         if (delta < 0)
             delta = -delta;
@@ -688,7 +688,7 @@ vector<double> TernaryMera::energy (bool verbose){
 
     // printing the energies in verbose mode or if there is warning
     if (verbose || !allequal) {
-        for (int i = 0; i < result.size(); ++i)
+        for (u_int i = 0; i < result.size(); ++i)
             cout << "lvl "<< i <<": "<< result[i] << "\t";
         cout << endl;
     }
@@ -706,12 +706,12 @@ vector<double> TernaryMera::energy (bool verbose){
  *
  * return void
  */
-void TernaryMera::iso_update (int level, int num_update,
+void TernaryMera::iso_update (u_int level, u_int num_update,
                               bool verbose, bool negateH){
     if (verbose)
         cout << "updating Isometry of level " << level << endl;
 
-    int uplevel = level+1;
+    u_int uplevel = level+1;
     if (level > numlevels-2)
         uplevel = level;
     vector<Index> Ienvr;
@@ -719,7 +719,7 @@ void TernaryMera::iso_update (int level, int num_update,
     Tensor env;
     cx_mat U, V;
     vec s;
-    for (int update = 0; update < num_update; ++update) {
+    for (u_int update = 0; update < num_update; ++update) {
         env = iso_env(level,false,negateH);
         Ienvr = vector<Index> (env.indeces.begin(), env.indeces.begin()+3);
         Ienvc = vector<Index> (env.indeces.begin()+3, env.indeces.begin()+4);
@@ -744,7 +744,7 @@ void TernaryMera::iso_update (int level, int num_update,
  *
  * return void
  */
-void TernaryMera::uni_update (int level, int num_update,
+void TernaryMera::uni_update (u_int level, u_int num_update,
                               bool verbose, bool negateH){
     if (verbose)
         cout << "updating Unitary of level " << level << endl;
@@ -754,7 +754,7 @@ void TernaryMera::uni_update (int level, int num_update,
     Tensor env;
     cx_mat U, V;
     vec s;
-    for (int update = 0; update < num_update; ++update) {
+    for (u_int update = 0; update < num_update; ++update) {
         env = uni_env(level,false,negateH);
         Uenvr = vector<Index> (env.indeces.begin(), env.indeces.begin()+2);
         Uenvc = vector<Index> (env.indeces.begin()+2, env.indeces.begin()+4);
@@ -780,7 +780,7 @@ void TernaryMera::bottom_up(bool verbose, bool negateH){
     if (verbose)
         cout << "starting one bottom_up step" << endl;
 
-    for (int l = 0; l < numlevels; ++l) {
+    for (u_int l = 0; l < numlevels; ++l) {
         iso_update(l,10,verbose,negateH);
         uni_update(l,10,verbose,negateH);
     }
@@ -801,9 +801,9 @@ void TernaryMera::bottom_up(bool verbose, bool negateH){
  *
  * return double final energy
  */
-double
-TernaryMera::buOptimize (int num_iter, bool verbose, bool negateH) {
-    for (int i = 0; i < num_iter; ++i) {
+void
+TernaryMera::buOptimize (u_int num_iter, bool verbose, bool negateH) {
+    for (u_int i = 0; i < num_iter; ++i) {
         if (verbose)
             cout << "iteration number : "<< i << endl;
         bottom_up(verbose, negateH);

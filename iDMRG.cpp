@@ -514,7 +514,7 @@ void IDMRG::canonicalize(Tensor A, Tensor B, u_int D, u_int nextD){
     if (verbose)
         lfout << arnoldi_res << endl;
     Vecmat = Vec.toMat(1,1);
-    Vecmat = Vecmat/Vecmat(0,0);
+    Vecmat = Vecmat/Vecmat.max();
     eig_sym(Vecvals,Vecvecs,Vecmat);
     if (verbose)
         lfout << "left : " << endl << Vecvals << endl;
@@ -542,8 +542,7 @@ void IDMRG::canonicalize(Tensor A, Tensor B, u_int D, u_int nextD){
     if (verbose)
         lfout << arnoldi_res << endl;
     Vecmat = Vec.toMat(1,1);
-    //Vecmat = (Vecmat + Vecmat.t())/2;
-    Vecmat = Vecmat/Vecmat(0,0);
+    Vecmat = Vecmat/Vecmat.max();
     eig_sym(Vecvals,Vecvecs,Vecmat);
     //eig_gen(iVecvals,Vecvecs,Vecmat);
     if (verbose)
@@ -604,7 +603,8 @@ void IDMRG::canonicalize(Tensor A, Tensor B, u_int D, u_int nextD){
     new_lambda.fromMat(eyeD * diagmat(new_lambda_vec), mkIdxSet(ru),mkIdxSet(ou));
 
     // putting results into the class
-    canonical_Lambda = new_lambda_vec % new_lambda_vec; // element-wise multiplication
+    canonical_Lambda = new_lambda_vec;
+    entanglement_spectrum = canonical_Lambda % canonical_Lambda;
     canonical_Gamma = new_Gamma;
 
     // checking canonicalization
@@ -620,7 +620,7 @@ void IDMRG::canonicalize(Tensor A, Tensor B, u_int D, u_int nextD){
     if (verbose)
         lfout << arnoldi_res << endl;
     Vecmat = Vec.toMat(1,1);
-    Vecmat = Vecmat/Vecmat(0,0); // killing the irrelevant phase factor
+    Vecmat = Vecmat /Vecmat.max(); // killing the irrelevant phase factor
     eig_sym(Vecvals,Vecmat);
     if (verbose)
         lfout << "right check is : " << endl << Vecvals;
@@ -645,11 +645,14 @@ void IDMRG::canonicalize(Tensor A, Tensor B, u_int D, u_int nextD){
         lfout << arnoldi_res << endl;
     //Vec.print(20);
     Vecmat = Vec.toMat(1,1);
-    Vecmat = Vecmat/Vecmat(0,0); // killing the irrelevant phase factor
+    Vecmat = Vecmat/Vecmat.max(); // killing the irrelevant phase factor
     eig_sym(Vecvals,Vecmat);
     if (verbose)
         lfout << "left check is : " << endl << Vecvals;
 
+    canonical_Gamma/sqrt(arnoldi_res.real());
+    UP_tensor/sqrt(arnoldi_res.real());
+    DN_tensor/sqrt(arnoldi_res.real());
 }
 
 /**
@@ -814,7 +817,7 @@ cx_d IDMRG::arnoldi_canonical(Tensor & V){
     // TO-DO : improve Arnoldi algorithm
     if (verbose)
         lfout << "starting arnoldi" << endl;
-    double r_threshold = 1.0e-12;
+    double r_threshold = 1.0e-10;
     Index vu = V.indeces[0];
     Index vd = V.indeces[1];
     Tensor Vtemp;
@@ -829,7 +832,7 @@ cx_d IDMRG::arnoldi_canonical(Tensor & V){
     cx_mat eigenvecs;
     cx_vec eigenvals;
     uword sss;
-    bool restart;
+    //bool restart;
     while (error > 1.0e-15){
         // operating UP DN V
         Vtemp.fromVec(Q.col(i),mkIdxSet(vu,vd));
@@ -918,16 +921,78 @@ IDMRG::iterate(){
         // printing canonically
         lfout << "canonical_Gammas" << endl;
         lfout << "canonical_Lambda:" << endl;
-        lfout << canonical_Lambda << endl;
+        lfout << entanglement_spectrum << endl;
     }
 
     // printing useful information
     lfout << "finished in " << iteration << " iteration" << endl;
     lfout << "final truncation error" << endl;
     lfout << lambda_truncated[energy.size()-1] << endl;
-    lfout << "Von-Neumann : " << renyi(1.0,canonical_Lambda) << endl;
-    lfout << "Renyi  0.5  : " << renyi(0.5, canonical_Lambda) << endl;
-    lfout << "Renyi  2    : " << renyi(2, canonical_Lambda) << endl;
+    lfout << "Von-Neumann : " << renyi(1.0,entanglement_spectrum) << endl;
+    lfout << "Renyi  0.5  : " << renyi(0.5, entanglement_spectrum) << endl;
+    lfout << "Renyi  2    : " << renyi(2.0, entanglement_spectrum) << endl;
+    lfout << "Renyi  2    : " << renyi(100.0, entanglement_spectrum) << endl;
+}
+
+/**
+ * expectation_onesite
+ * calculates the expectation value of a given one-site operator
+ * using canonical Lambda and Gammma
+ * an example is S_z
+ */
+double IDMRG::expectation_onesite(cx_mat onesite_op){
+    double expectation_value = 0.0;
+    u_int D = canonical_Lambda.size();
+    Index lu = canonical_Gamma.indeces[0];
+    Index ru = canonical_Gamma.indeces[3];
+    Index il("il",D),ir("ir",D);
+    cx_mat eyeD(D,D);
+    eyeD.eye();
+    lfout << "starting the one site calculation" << endl;
+    // the one site operator is a d.d matrix
+    Tensor onesite, lamleft, lamright;
+    onesite.fromMat(kron(onesite_op, onesite_op) ,
+                    mkIdxSet(sdl,sdr),mkIdxSet(sul,sur));
+    lamleft.fromMat(eyeD * diagmat(canonical_Lambda),
+                    mkIdxSet(il), mkIdxSet(lu));
+    lamright.fromMat(eyeD * diagmat(canonical_Lambda),
+                     mkIdxSet(ru), mkIdxSet(ir));
+
+    Tensor Gamma_up = lamleft * canonical_Gamma * lamright;
+    Tensor Gamma_dn = Gamma_up.conjugate();
+    Gamma_up.printIndeces();
+    Gamma_dn.reIndex(il,sdl,sdr,ir);
+    Gamma_dn.printIndeces();
+    onesite.printIndeces();
+    Tensor result = Gamma_up * onesite * Gamma_dn;
+    result.printIndeces();
+    result.print(2);
+    return expectation_value;
+}
+
+/**
+ * expectation_twosite
+ * calculates the expectation value of a given  two-site operator
+ * using canonical Lambda and Gammma
+ * an example is the energy for NN models
+ */
+double IDMRG::expectation_twosite(cx_mat twosite_op){
+    double expectation_value = 0.0;
+    Tensor Gamma_star = canonical_Gamma.conjugate();
+
+    return expectation_value;
+}
+
+/**
+ * gsFidelity
+ * calculates the ground state fidelity
+ * given the MPO for left and right Hamiltonians, which are different
+ * for a small amount of change in the desired parameter
+ */
+double IDMRG::gsFidelity(cx_mat leftmatHamilt, cx_mat rightmatHamilt){
+    double fid = 0.0;
+
+    return fid;
 }
 
 /**
@@ -952,4 +1017,109 @@ double IDMRG::renyi(double alpha, const vec & L){
         result = - sum( Ltemp/ (1.0-alpha) );
     }
     return result;
+}
+
+Tensor IDMRG::get_Gamma() const{
+    return canonical_Gamma;
+}
+vec IDMRG::get_Lambda() const{
+    return canonical_Lambda;
+}
+double gsFidelity(const IDMRG & left, const IDMRG & right){
+    // defining D
+    u_int Dl = left.entanglement_spectrum.size();
+    u_int Dr = right.entanglement_spectrum.size();
+    u_int D = (Dl > Dr) ? Dr : Dl;
+    cout << "Dl = " << Dl << ", Dr = " << Dr << " => D =" << D << endl;
+
+    Index vu("vu", D), vd("vd", D), lu("lu", D), ru("ru", D), ld("ld", D);
+    Tensor leftGam = left.get_Gamma();
+    Tensor rightGam = right.get_Gamma().conjugate();
+    leftGam = leftGam.slice(leftGam.indeces[0],0,D).slice(leftGam.indeces[3],0,D);
+    rightGam = rightGam.slice(rightGam.indeces[0],0,D).slice(rightGam.indeces[3],0,D);
+    Tensor leftLam, rightLam;
+    cx_mat eyeD(D,D);
+    eyeD.eye();
+    leftLam.fromMat(eyeD * diagmat(left.get_Lambda()(span(0,D-1))), mkIdxSet(ru), mkIdxSet(vu));
+    rightLam.fromMat(eyeD * diagmat(right.get_Lambda()(span(0,D-1))), mkIdxSet(ru), mkIdxSet(vd));
+    // leftGam.printIndeces();
+    // rightGam.printIndeces();
+    // leftLam.printIndeces();
+    // rightLam.printIndeces();
+    cout << "constructing up and dn" << endl;
+    Tensor up = leftGam * leftLam;
+    Tensor dn = rightGam * rightLam;
+    dn.reIndex(ld,dn.indeces[1],dn.indeces[2],vd);
+
+    // up.printIndeces();
+    // dn.printIndeces();
+
+    Tensor V;
+    V.fromVec(randu<cx_vec>(D*D),mkIdxSet(vu,vd));
+
+    cx_d a = arnoldi(V,up,dn);
+    cout << "fidelity is " << a << endl;
+    return a.real()*a.real() + a.imag()*a.imag();
+}
+
+cx_d arnoldi(Tensor & V, const Tensor & up, const Tensor & dn){
+    double r_threshold = 1.0e-10;
+    Index vu = V.indeces[0];
+    Index vd = V.indeces[1];
+    Tensor Vtemp;
+    cx_vec h, resV;
+    vec errors;
+    cx_vec r = V.toVec();
+    cx_vec q = r/norm(r,2);
+    cx_mat T, Q = q;
+    int i = 0;
+    double error = 1;
+    double hbefore = 0.0;
+    cx_mat eigenvecs;
+    cx_vec eigenvals;
+    uword sss;
+    //bool restart;
+    while (error > 1.0e-15){
+        // operating UP DN V
+        Vtemp.fromVec(Q.col(i),mkIdxSet(vu,vd));
+        Vtemp = (Vtemp * up) * dn;
+        r = Vtemp.toVec();
+        // orthogonalization step
+        h = Q.t() * r;
+        r = r - Q * h;
+
+        // creating the matrix T
+        if (i == 0)
+            T = h;
+        else {
+            T.resize(i+1,i+1);
+            T(i,i-1) = hbefore;
+            T.col(i) = h;
+        }
+        hbefore = norm(r,2);
+
+        // eigensolving T
+        eig_gen(eigenvals, eigenvecs, T);
+        // eigenvals are not ordered
+        // find the largest abs eigenvalue
+        vec absvals = abs(eigenvals);
+        absvals.max(sss);
+
+        resV = Q * eigenvecs.col(sss);
+
+        if (abs(hbefore) < r_threshold)
+            break;
+
+        // if (i > 100)
+        //     break;
+
+        // convergence
+        errors = abs(eigenvecs.row(i)).st() * hbefore;
+        error = errors(sss);
+        q = r/hbefore;
+        Q = join_rows(Q,q);
+
+        i++;
+    }
+    return eigenvals(sss);
 }

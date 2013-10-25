@@ -11,6 +11,7 @@
 #include "Index.h"
 #include <complex>
 
+typedef std::complex<double> cx_d;
 /**
  * Tensor class
  * indeces:= a vector of all the indeces
@@ -20,7 +21,6 @@
  * values:= values stored in the Tensor
  * rank:= rank of the the Tensor
  */
-typedef std::complex<double> cx_d;
 
 class Tensor {
 public:

@@ -563,7 +563,7 @@ Tensor Tensor::slice(Index index, u_int from, u_int upto) {
     //cout << "starting slice" << endl;
     // checking for correct input
     assert(from > 0 || from == 0);
-    assert(upto > from && upto < index.card);
+    assert(upto > from && upto < index.card + 1);
 
     // check to see whether index is in the Tensor
     //cout << "check" << endl;
@@ -575,6 +575,9 @@ Tensor Tensor::slice(Index index, u_int from, u_int upto) {
         }
     }
     assert(idx > -1); // asserting the index to be in indeces
+    //check to see if any operation is necessary
+    if (from == 0 && indeces[idx].card == upto)
+        return *this;
     //cout << "assertion passed" << endl;
     // reducing the index
     vector<Index> newIndeces = indeces;

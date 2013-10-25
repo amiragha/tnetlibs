@@ -15,9 +15,9 @@
  */
 
 class TernaryMera {
-    int numlevels; /// maximum cardinality for Tensor indeces
+    u_int numlevels; /// maximum cardinality for Tensor indeces
     double thresh;
-    std::vector<int> cards; /// holding cardinalities for each level
+    std::vector<u_int> cards; /// holding cardinalities for each level
     std::vector<Tensor> Hamiltonian; /// holding Hamiltonians
     std::vector<Tensor> Isometry; /// holding Isometries
     std::vector<Tensor> Unitary; /// holding Unitaries
@@ -28,7 +28,7 @@ public:
     /**
      * constructors
      */
-    TernaryMera(arma::cx_mat & Hmat, int icard, int fcard,
+    TernaryMera(arma::cx_mat & Hmat, u_int icard, u_int fcard,
                 bool verbose = false);
     ~TernaryMera();
 
@@ -40,7 +40,7 @@ private:
      *
      * return void
      */
-    void give_random_UniIso(int level);
+    void give_random_UniIso(u_int level);
 
     /** give_random_density
      * find a random DensityMatrix satisfying all the properties
@@ -61,7 +61,7 @@ public:
      *
      * return void
      */
-    void ascend (int level, bool verbose = false);
+    void ascend (u_int level, bool verbose = false);
 
     /**
      * descend
@@ -72,7 +72,7 @@ public:
      *
      * return void
      */
-    void descend (int level, bool verbose = false);
+    void descend (u_int level, bool verbose = false);
 
     /**
      * iso_env
@@ -83,7 +83,7 @@ public:
      *
      * return Tensor of environment for isometry
      */
-    Tensor iso_env (int level, bool verbose = false, bool negateH = true);
+    Tensor iso_env (u_int level, bool verbose = false, bool negateH = true);
 
     /**
      * uni_env
@@ -94,7 +94,7 @@ public:
      *
      * return Tensor of environment for unitary
      */
-    Tensor uni_env (int level, bool verbose = false, bool negateH = true);
+    Tensor uni_env (u_int level, bool verbose = false, bool negateH = true);
 
     /**
      * arnoldi
@@ -115,7 +115,7 @@ public:
      *
      * return double or a vector of doubles
      */
-    double energy (int level);
+    double energy (u_int level);
     std::vector<double> energy (bool verbose = false);
 
     /**
@@ -128,7 +128,7 @@ public:
      *
      * return void
      */
-    void iso_update (int level, int num_update,
+    void iso_update (u_int level, u_int num_update,
                      bool verbose = false, bool negateH = true);
 
     /**
@@ -141,7 +141,7 @@ public:
      *
      * return void
      */
-    void uni_update (int level, int num_update,
+    void uni_update (u_int level, u_int num_update,
                      bool verbose = false, bool negateH = true);
 
     /**
@@ -164,8 +164,8 @@ public:
      *
      * return double final energy
      */
-    double
-    buOptimize (int num_iter, bool verbose = false, bool negateH = true);
+    void
+    buOptimize (u_int num_iter, bool verbose = false, bool negateH = true);
 
 };
 
