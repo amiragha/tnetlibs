@@ -273,7 +273,7 @@ void Tensor::fromVec(const arma::cx_vec & vect,
  * of other Tensor as col of the final matrix.
  */
 vector<vector<Index> >
-Tensor::similarities(const Tensor & other){
+Tensor::similarities(const Tensor & other) const{
     // cout << "calling sim" << endl;
     // check whether any of our tensor indeces exist in the other
     vector<vector<Index> > result;
@@ -312,7 +312,7 @@ Tensor::similarities(const Tensor & other){
  * return a new Tensor
  */
 Tensor
-Tensor::operator * (const Tensor & other){
+Tensor::operator * (const Tensor & other) const{
     // cout << "calling *" << endl;
 
     //finding the similarities:
@@ -323,7 +323,7 @@ Tensor::operator * (const Tensor & other){
     vector<Index> contracting = sims[2];
 
     // using the vectors to change the representation of tensors
-    prodCards();
+    //prodCards();
     cx_mat one, two;
 
     cx_mat res = toMat_aux(rowFinal, contracting, one) *
@@ -414,7 +414,7 @@ Tensor::operator / (double num){
  * return the full cardinality of the Tensor
  */
 long
-Tensor::prodCards(){
+Tensor::prodCards() {
     long prod = 1;
     coeff.clear();
     vecCoeff.clear();

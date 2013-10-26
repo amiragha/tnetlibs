@@ -510,7 +510,7 @@ void IDMRG::canonicalize(Tensor A, Tensor B, u_int D, u_int nextD){
     DN_tensor = UP_tensor.conjugate();
     DN_tensor.reIndex(mkIdxSet(vd,sul,sur,od));
     Vec.fromVec(randu<cx_vec>(D*D),mkIdxSet(vu,vd));
-    arnoldi_res = arnoldi_canonical(Vec);
+    arnoldi_res = arnoldi(Vec,UP_tensor,DN_tensor);
     if (verbose)
         lfout << arnoldi_res << endl;
     Vecmat = Vec.toMat(1,1);
@@ -538,7 +538,7 @@ void IDMRG::canonicalize(Tensor A, Tensor B, u_int D, u_int nextD){
     DN_tensor = UP_tensor.conjugate();
     DN_tensor.reIndex(mkIdxSet(od,sul,vd,sur));
     Vec.fromVec(randu<cx_vec>(D*D),mkIdxSet(vu,vd));
-    arnoldi_res = arnoldi_canonical(Vec);
+    arnoldi_res = arnoldi(Vec,UP_tensor,DN_tensor);
     if (verbose)
         lfout << arnoldi_res << endl;
     Vecmat = Vec.toMat(1,1);
@@ -616,7 +616,7 @@ void IDMRG::canonicalize(Tensor A, Tensor B, u_int D, u_int nextD){
     DN_tensor = UP_tensor.conjugate();
     DN_tensor.reIndex(mkIdxSet(od,sul,sur,vd));
     Vec.fromVec(randu<cx_vec>(D*D),mkIdxSet(vu,vd));
-    arnoldi_res = arnoldi_canonical(Vec);
+    arnoldi_res = arnoldi(Vec,UP_tensor,DN_tensor);
     if (verbose)
         lfout << arnoldi_res << endl;
     Vecmat = Vec.toMat(1,1);
@@ -640,7 +640,7 @@ void IDMRG::canonicalize(Tensor A, Tensor B, u_int D, u_int nextD){
     DN_tensor = UP_tensor.conjugate();
     DN_tensor.reIndex(mkIdxSet(vd,sul,sur,od));
     Vec.fromVec(randu<cx_vec>(D*D),mkIdxSet(vu,vd));
-    arnoldi_res = arnoldi_canonical(Vec);
+    arnoldi_res = arnoldi(Vec,UP_tensor,DN_tensor);
     if (verbose)
         lfout << arnoldi_res << endl;
     //Vec.print(20);
@@ -941,7 +941,7 @@ IDMRG::iterate(){
  * an example is S_z
  */
 double IDMRG::expectation_onesite(cx_mat onesite_op){
-    double expectation_value = 0.0;
+    //double expectation_value = 0.0;
     u_int D = canonical_Lambda.size();
     Index lu = canonical_Gamma.indeces[0];
     Index ru = canonical_Gamma.indeces[3];
@@ -960,14 +960,14 @@ double IDMRG::expectation_onesite(cx_mat onesite_op){
 
     Tensor Gamma_up = lamleft * canonical_Gamma * lamright;
     Tensor Gamma_dn = Gamma_up.conjugate();
-    Gamma_up.printIndeces();
-    Gamma_dn.reIndex(il,sdl,sdr,ir);
-    Gamma_dn.printIndeces();
-    onesite.printIndeces();
+    // Gamma_up.printIndeces();
+    // Gamma_dn.reIndex(il,sdl,sdr,ir);
+    // Gamma_dn.printIndeces();
+    // onesite.printIndeces();
     Tensor result = Gamma_up * onesite * Gamma_dn;
-    result.printIndeces();
-    result.print(2);
-    return expectation_value;
+    // result.printIndeces();
+    // result.print(2);
+    return result.values[0].real();
 }
 
 /**
@@ -1025,6 +1025,7 @@ Tensor IDMRG::get_Gamma() const{
 vec IDMRG::get_Lambda() const{
     return canonical_Lambda;
 }
+
 double gsFidelity(const IDMRG & left, const IDMRG & right){
     // defining D
     u_int Dl = left.entanglement_spectrum.size();
@@ -1032,9 +1033,11 @@ double gsFidelity(const IDMRG & left, const IDMRG & right){
     u_int D = (Dl > Dr) ? Dr : Dl;
     cout << "Dl = " << Dl << ", Dr = " << Dr << " => D =" << D << endl;
 
-    Index vu("vu", D), vd("vd", D), lu("lu", D), ru("ru", D), ld("ld", D);
+    Index vu("vu", D), vd("vd", D), lu("lu", D), ru("ru", D), ld("ld", D), rd("rd",D);
     Tensor leftGam = left.get_Gamma();
     Tensor rightGam = right.get_Gamma().conjugate();
+    Index sul = leftGam.indeces[1];
+    Index sur = leftGam.indeces[2];
     leftGam = leftGam.slice(leftGam.indeces[0],0,D).slice(leftGam.indeces[3],0,D);
     rightGam = rightGam.slice(rightGam.indeces[0],0,D).slice(rightGam.indeces[3],0,D);
     Tensor leftLam, rightLam;
@@ -1042,44 +1045,56 @@ double gsFidelity(const IDMRG & left, const IDMRG & right){
     eyeD.eye();
     leftLam.fromMat(eyeD * diagmat(left.get_Lambda()(span(0,D-1))), mkIdxSet(ru), mkIdxSet(vu));
     rightLam.fromMat(eyeD * diagmat(right.get_Lambda()(span(0,D-1))), mkIdxSet(ru), mkIdxSet(vd));
-    // leftGam.printIndeces();
-    // rightGam.printIndeces();
-    // leftLam.printIndeces();
-    // rightLam.printIndeces();
     cout << "constructing up and dn" << endl;
     Tensor up = leftGam * leftLam;
     Tensor dn = rightGam * rightLam;
-    dn.reIndex(ld,dn.indeces[1],dn.indeces[2],vd);
 
-    // up.printIndeces();
-    // dn.printIndeces();
+    dn.reIndex(ld,sul,sur,vd);
+    Tensor Vr;
+    Vr.fromVec(randu<cx_vec>(D*D),mkIdxSet(vu,vd));
+    cx_d c = arnoldi(Vr,up,dn);
+    cout << "fidelity is " << c << endl;
 
-    Tensor V;
-    V.fromVec(randu<cx_vec>(D*D),mkIdxSet(vu,vd));
+    // leftGam.reIndex(lu,sul,sur,ru);
+    // rightGam.reIndex(lu,sul,sur,rd);
+    // leftLam.reIndex(mkIdxSet(vu,lu));
+    // rightLam.reIndex(mkIdxSet(vd,lu));
+    // up = leftLam * leftGam;
+    // dn = rightLam * rightGam;
 
-    cx_d a = arnoldi(V,up,dn);
-    cout << "fidelity is " << a << endl;
-    return a.real()*a.real() + a.imag()*a.imag();
+    // Tensor Vl;
+    // Vl.fromVec(randu<cx_vec>(D*D),mkIdxSet(vu,vd));
+    // cx_d b = arnoldi(Vl,up,dn);
+    // cout << "fidelity is " << b << endl;
+
+    // leftLam.reIndex(mkIdxSet(vu,lu));
+    // rightLam.reIndex(mkIdxSet(vd,ld));
+    // Vr.reIndex(mkIdxSet(lu,ld));
+
+    // Tensor III = Vl * leftLam * rightLam * Vr;
+    // III.print(1);
+    // cx_d c = a * b;
+    return c.real()*c.real() + c.imag()*c.imag();
 }
 
 cx_d arnoldi(Tensor & V, const Tensor & up, const Tensor & dn){
     double r_threshold = 1.0e-10;
     Index vu = V.indeces[0];
     Index vd = V.indeces[1];
+    u_int D = vu.card;
     Tensor Vtemp;
     cx_vec h, resV;
     vec errors;
     cx_vec r = V.toVec();
     cx_vec q = r/norm(r,2);
     cx_mat T, Q = q;
-    int i = 0;
     double error = 1;
     double hbefore = 0.0;
     cx_mat eigenvecs;
     cx_vec eigenvals;
     uword sss;
     //bool restart;
-    while (error > 1.0e-15){
+    for (int i = 0; i < D*D; ++i){
         // operating UP DN V
         Vtemp.fromVec(Q.col(i),mkIdxSet(vu,vd));
         Vtemp = (Vtemp * up) * dn;
@@ -1110,8 +1125,6 @@ cx_d arnoldi(Tensor & V, const Tensor & up, const Tensor & dn){
         if (abs(hbefore) < r_threshold)
             break;
 
-        // if (i > 100)
-        //     break;
 
         // convergence
         errors = abs(eigenvecs.row(i)).st() * hbefore;
@@ -1119,7 +1132,10 @@ cx_d arnoldi(Tensor & V, const Tensor & up, const Tensor & dn){
         q = r/hbefore;
         Q = join_rows(Q,q);
 
-        i++;
+        if (error < 1.e-14)
+            break;
+
     }
+    V.fromVec(resV, mkIdxSet(vu,vd));
     return eigenvals(sss);
 }

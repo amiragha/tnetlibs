@@ -119,7 +119,7 @@ public:
      * indeces of this Tensor as row of the final matrix and other indeces
      * of other Tensor as col of the final matrix.
      */
-    std::vector<std::vector<Index> > similarities(const Tensor &other);
+    std::vector<std::vector<Index> > similarities(const Tensor &other) const;
 
     /**
      * overloading operator *
@@ -132,7 +132,7 @@ public:
      *
      * return a new Tensor
      */
-    Tensor operator * (const Tensor & other);
+    Tensor operator * (const Tensor & other) const;
     Tensor operator + (const Tensor & other);
     Tensor& operator / (double num);
 
