@@ -1,8 +1,8 @@
 #include <iostream>
-#include "iDMRG.h"
 #include <iomanip>
 #include <cmath>
 #include <cassert>
+#include "iDMRG.h"
 
 using namespace std;
 using namespace arma;
@@ -40,7 +40,7 @@ IDMRG::IDMRG(cx_mat & mHamilt, u_int Bdim, u_int dim, u_int mD,
         sul.i("sul",d), sdl.i("sdl",d), sur.i("sur",d), sdr.i("sdr",d),
         sd.i("sd",d), su.i("su",d);
 
-
+    //arnoldi = new Arnoldi(&applyUPDN);
     /* Note:
      * here WL has Indeces = sdl:d, sul:d, b:B
      * here WR has Indeces = sdr:d, b:B, sur:d
@@ -83,7 +83,7 @@ IDMRG::IDMRG(cx_mat & mHamilt, u_int Bdim, u_int dim, u_int mD,
 }
 
 IDMRG::~IDMRG(){
-
+    //delete arnoldi;
 }
 
 /**
@@ -479,6 +479,7 @@ void IDMRG::canonicalize(Tensor A, Tensor B, u_int D, u_int nextD){
     cx_mat Vecmat, Vecvecs;
     cx_mat X, Y;
     vec Vecvals;
+    cx_vec invec;
     cx_mat eyeD;
     eyeD.eye(D,D);
     cx_mat dlam,dlambar;
@@ -510,10 +511,11 @@ void IDMRG::canonicalize(Tensor A, Tensor B, u_int D, u_int nextD){
     DN_tensor = UP_tensor.conjugate();
     DN_tensor.reIndex(mkIdxSet(vd,sul,sur,od));
     Vec.fromVec(randu<cx_vec>(D*D),mkIdxSet(vu,vd));
-    arnoldi_res = arnoldi(Vec,UP_tensor,DN_tensor);
+    invec = randu<cx_vec>(D*D);
+    arnoldi_res = arnoldi(invec, Vecmat);
     if (verbose)
         lfout << arnoldi_res << endl;
-    Vecmat = Vec.toMat(1,1);
+    Vecmat.reshape(D, D);
     Vecmat = Vecmat/Vecmat.max();
     eig_sym(Vecvals,Vecvecs,Vecmat);
     if (verbose)
@@ -538,10 +540,10 @@ void IDMRG::canonicalize(Tensor A, Tensor B, u_int D, u_int nextD){
     DN_tensor = UP_tensor.conjugate();
     DN_tensor.reIndex(mkIdxSet(od,sul,vd,sur));
     Vec.fromVec(randu<cx_vec>(D*D),mkIdxSet(vu,vd));
-    arnoldi_res = arnoldi(Vec,UP_tensor,DN_tensor);
+    arnoldi_res = arnoldi(invec, Vecmat);
     if (verbose)
         lfout << arnoldi_res << endl;
-    Vecmat = Vec.toMat(1,1);
+    Vecmat.reshape(D, D);
     Vecmat = Vecmat/Vecmat.max();
     eig_sym(Vecvals,Vecvecs,Vecmat);
     //eig_gen(iVecvals,Vecvecs,Vecmat);
@@ -616,11 +618,12 @@ void IDMRG::canonicalize(Tensor A, Tensor B, u_int D, u_int nextD){
     DN_tensor = UP_tensor.conjugate();
     DN_tensor.reIndex(mkIdxSet(od,sul,sur,vd));
     Vec.fromVec(randu<cx_vec>(D*D),mkIdxSet(vu,vd));
-    arnoldi_res = arnoldi(Vec,UP_tensor,DN_tensor);
+    invec = randu<cx_vec>(D*D);
+    arnoldi_res = arnoldi(invec, Vecmat);
     if (verbose)
         lfout << arnoldi_res << endl;
-    Vecmat = Vec.toMat(1,1);
-    Vecmat = Vecmat /Vecmat.max(); // killing the irrelevant phase factor
+    Vecmat.reshape(D, D);
+    Vecmat = Vecmat/Vecmat.max();
     eig_sym(Vecvals,Vecmat);
     if (verbose)
         lfout << "right check is : " << endl << Vecvals;
@@ -640,12 +643,12 @@ void IDMRG::canonicalize(Tensor A, Tensor B, u_int D, u_int nextD){
     DN_tensor = UP_tensor.conjugate();
     DN_tensor.reIndex(mkIdxSet(vd,sul,sur,od));
     Vec.fromVec(randu<cx_vec>(D*D),mkIdxSet(vu,vd));
-    arnoldi_res = arnoldi(Vec,UP_tensor,DN_tensor);
+    invec = randu<cx_vec>(D*D);
+    arnoldi_res = arnoldi(invec, Vecmat);
     if (verbose)
         lfout << arnoldi_res << endl;
-    //Vec.print(20);
-    Vecmat = Vec.toMat(1,1);
-    Vecmat = Vecmat/Vecmat.max(); // killing the irrelevant phase factor
+    Vecmat.reshape(D, D);
+    Vecmat = Vecmat /Vecmat.max(); // killing the irrelevant phase factor
     eig_sym(Vecvals,Vecmat);
     if (verbose)
         lfout << "left check is : " << endl << Vecvals;
@@ -698,6 +701,18 @@ IDMRG::operateH(cx_vec & q){
     return res;
 }
 
+/**
+ * applyUPDN
+ */
+void IDMRG::applyUPDN(const cx_vec & in, cx_vec & out){
+    u_int D = UP_tensor.indeces[0].card;
+    assert (D*D == in.size());
+    Index vu("vu",D),vd("vd",D);
+    Tensor V;
+    V.fromVec(in, mkIdxSet(vu,vd));
+    V = (V * UP_tensor) * DN_tensor;
+    out = V.toVec();
+}
 /**
  * Lanczos
  * given a guess vector and a reference ksi, updates the ksi to the
@@ -951,7 +966,7 @@ double IDMRG::expectation_onesite(cx_mat onesite_op){
     lfout << "starting the one site calculation" << endl;
     // the one site operator is a d.d matrix
     Tensor onesite, lamleft, lamright;
-    onesite.fromMat(kron(onesite_op, onesite_op) ,
+    onesite.fromMat(kron(onesite_op, eye(d,d)) + kron(eye(d,d), onesite_op),
                     mkIdxSet(sdl,sdr),mkIdxSet(sul,sur));
     lamleft.fromMat(eyeD * diagmat(canonical_Lambda),
                     mkIdxSet(il), mkIdxSet(lu));
@@ -1026,7 +1041,7 @@ vec IDMRG::get_Lambda() const{
     return canonical_Lambda;
 }
 
-double gsFidelity(const IDMRG & left, const IDMRG & right){
+cx_vec gsFidelity(const IDMRG & left, const IDMRG & right){
     // defining D
     u_int Dl = left.entanglement_spectrum.size();
     u_int Dr = right.entanglement_spectrum.size();
@@ -1050,10 +1065,11 @@ double gsFidelity(const IDMRG & left, const IDMRG & right){
     Tensor dn = rightGam * rightLam;
 
     dn.reIndex(ld,sul,sur,vd);
-    Tensor Vr;
-    Vr.fromVec(randu<cx_vec>(D*D),mkIdxSet(vu,vd));
-    cx_d c = arnoldi(Vr,up,dn);
-    cout << "fidelity is " << c << endl;
+    Tensor Vr = up * dn;
+    Vr.reIndex(ld,lu,vd,vu);
+    cx_vec tranferEig;
+    cx_mat dummy;
+    eig_gen(tranferEig, dummy, Vr.toMat(2,2));
 
     // leftGam.reIndex(lu,sul,sur,ru);
     // rightGam.reIndex(lu,sul,sur,rd);
@@ -1074,68 +1090,101 @@ double gsFidelity(const IDMRG & left, const IDMRG & right){
     // Tensor III = Vl * leftLam * rightLam * Vr;
     // III.print(1);
     // cx_d c = a * b;
-    return c.real()*c.real() + c.imag()*c.imag();
+    return tranferEig;
 }
+cx_d IDMRG::arnoldi(arma::cx_vec&  vstart,
+                    arma::cx_mat& eigenVectors
+                    )
+{
+    double conv_thresh = 1.e-15;
+    arma::cx_vec eigenValue(1);
+    u_int maxArSpace = vstart.size();
+    u_int number_of_eigs = 1;
 
-cx_d arnoldi(Tensor & V, const Tensor & up, const Tensor & dn){
-    double r_threshold = 1.0e-10;
-    Index vu = V.indeces[0];
-    Index vd = V.indeces[1];
-    u_int D = vu.card;
-    Tensor Vtemp;
-    cx_vec h, resV;
-    vec errors;
-    cx_vec r = V.toVec();
-    cx_vec q = r/norm(r,2);
-    cx_mat T, Q = q;
-    double error = 1;
-    double hbefore = 0.0;
-    cx_mat eigenvecs;
-    cx_vec eigenvals;
-    uword sss;
-    //bool restart;
-    for (int i = 0; i < D*D; ++i){
-        // operating UP DN V
-        Vtemp.fromVec(Q.col(i),mkIdxSet(vu,vd));
-        Vtemp = (Vtemp * up) * dn;
-        r = Vtemp.toVec();
+    // defining needed variables
+    arma::cx_vec         q, r, h, c,eigenValsT;
+    arma::cx_mat         Q, eigenVecsT;
+    arma::cx_mat         T;
+    arma::vec            errors;
+    arma::uvec           sorted_indeces;
+    arma::uword          sorted_index;
+    double               hbefore = 0.0;
+    bool                 all_converged = false;
+    u_int                vectorDim = vstart.size();
+
+    // initialize
+    eigenVectors = arma::zeros<arma::cx_mat>(vectorDim, number_of_eigs);
+    eigenValue  = arma::zeros<arma::cx_vec>(number_of_eigs);
+    errors       = arma::ones<arma::vec>(number_of_eigs);
+
+    q = vstart / arma::norm(vstart,2);
+    Q = q;
+
+    u_int i;
+    for (i = 0; i < maxArSpace; ++i)
+    {
+        // build r , r = A * q
+        applyUPDN(q, r);
+
         // orthogonalization step
+        // orthogonalization is iterated for a more accurate result
         h = Q.t() * r;
         r = r - Q * h;
+        c = Q.t() * r;
+        r = r - Q * c;
+        h = h + c;
 
         // creating the matrix T
-        if (i == 0)
-            T = h;
-        else {
+        if (i == 0) T = h;
+        else
+        {
             T.resize(i+1,i+1);
             T(i,i-1) = hbefore;
             T.col(i) = h;
         }
-        hbefore = norm(r,2);
+        hbefore = arma::norm(r,2);
 
-        // eigensolving T
-        eig_gen(eigenvals, eigenvecs, T);
+        // solve Aegean problem for T
+        arma::eig_gen(eigenValsT, eigenVecsT, T);
+
         // eigenvals are not ordered
-        // find the largest abs eigenvalue
-        vec absvals = abs(eigenvals);
-        absvals.max(sss);
+        // find the largest eigenvalue (according to abs)
+        sorted_indeces = arma::sort_index(abs(eigenValsT),1);
+        arma::vec errs = abs(eigenVecsT.row(i)).st() * hbefore;
 
-        resV = Q * eigenvecs.col(sss);
+        all_converged = true;
+        for (u_int e = 0; e < min(i+1, number_of_eigs); ++e)
+        {
+            sorted_index = sorted_indeces(e);
+            errors(e) = errs(sorted_index);
+            if (errors(e) > 1.0e-14)
+                all_converged = false;
+        }
 
-        if (abs(hbefore) < r_threshold)
-            break;
 
+        if (hbefore < conv_thresh && -hbefore < conv_thresh) break;
+        if (errors(number_of_eigs-1) > 1.0e-14) all_converged = false;
+        if (all_converged) break;
+        if (i+1 == maxArSpace) break;
 
-        // convergence
-        errors = abs(eigenvecs.row(i)).st() * hbefore;
-        error = errors(sss);
         q = r/hbefore;
         Q = join_rows(Q,q);
 
-        if (error < 1.e-14)
-            break;
-
     }
-    V.fromVec(resV, mkIdxSet(vu,vd));
-    return eigenvals(sss);
+
+    for (u_int e = 0; e < number_of_eigs; ++e)
+    {
+        sorted_index = sorted_indeces(e);
+        eigenValue(e) = eigenValsT(sorted_index);
+        eigenVectors.col(e) = Q * eigenVecsT.col(sorted_index);
+    }
+
+    if (verbose)
+    {
+        lfout << "finished in : " << i << "steps" << std::endl;
+        for (u_int i = 0; i < errors.size();++i)
+            lfout << errors(i) << "\t";
+        lfout << std::endl;
+    }
+    return eigenValue(0);
 }

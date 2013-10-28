@@ -125,7 +125,14 @@ private:
      */
     arma::cx_vec operateH(arma::cx_vec & q);
 
+
+    /**
+     * applyUPDN
+     */
+    void applyUPDN(const arma::cx_vec & in , arma::cx_vec & out);
 public:
+    cx_d arnoldi(arma::cx_vec& vstart,
+                 arma::cx_mat& eigenVectors);
     /**
      * arnoldi_canonical
      * performs arnoldi algorithms using UP_tensor and DN_tensor
@@ -178,6 +185,5 @@ public:
     arma::vec get_Lambda() const;
 };
 
-double gsFidelity(const IDMRG & left, const IDMRG & right);
-cx_d arnoldi(Tensor & V, const Tensor & up, const Tensor & dn);
+arma::cx_vec gsFidelity(const IDMRG & left, const IDMRG & right);
 #endif /* _IDMRG_H_ */
