@@ -75,12 +75,14 @@ public:
     Tensor get_Gamma() const;
     arma::vec get_Lambda() const;
 
+    double FinalEnergy() {return mFinalEnergy; }
 private:
     bool                         verbose;
     u_int                        iteration;
     std::ofstream                lfout;
     u_int                        B, d, maxD;
     std::vector<u_int>           matDims; /// D at each level
+    arma::cx_mat                 energyMPO;
 
     // needed Tensor and matrices for iDMRG calcualation
     arma::cx_vec                 guess;
@@ -103,6 +105,7 @@ private:
     // final results of iDMRG calcualtion
     Tensor                       canonical_Gamma;
     arma::vec                    canonical_Lambda;
+    double                       mFinalEnergy;
 
 
     /*

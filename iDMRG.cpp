@@ -46,23 +46,20 @@ IDMRG::IDMRG(cx_mat & mHamilt, u_int Bdim, u_int dim, u_int mD,
      * here WR has Indeces = sdr:d, b:B, sur:d
      * then W  has Indeces = sdl:d, sul:d, sdr:d, sur:d
      */
-    bool subtracting_largest_eigenvalue = true;
-    if (subtracting_largest_eigenvalue){
-        vec eigenvals;
-        cx_mat eyed(d,d);
-        eyed.eye();
-        WL.fromMat(matHamilt_lmost, mkIdxSet(sdl), mkIdxSet(sul,b));
-        WR.fromMat(matHamilt_rmost, mkIdxSet(sdr,b), mkIdxSet(sur));
-        W = WL * WR;
-        W.rearrange(mkIdxSet(sdl,sdr,sul,sur));
-        eig_sym(eigenvals,W.toMat(2,2));
-        largestEV = eigenvals(d*d - 1);
-        matHamilt.submat(B*d-d,0,B*d-1,d-1) =
-            matHamilt.submat(B*d-d,0,B*d-1,d-1) -largestEV * eyed;
-        matHamilt_lmost = matHamilt.rows(B*d-d, B*d-1);
-        matHamilt_rmost = matHamilt.cols(0,d-1);
-    }
-    else largestEV = 0.0;
+    vec eigenvals;
+    cx_mat eyed(d,d);
+    eyed.eye();
+    WL.fromMat(matHamilt_lmost, mkIdxSet(sdl), mkIdxSet(sul,b));
+    WR.fromMat(matHamilt_rmost, mkIdxSet(sdr,b), mkIdxSet(sur));
+    W = WL * WR;
+    W.rearrange(mkIdxSet(sdl,sdr,sul,sur));
+    energyMPO = W.toMat(2,2);
+    eig_sym(eigenvals,energyMPO);
+    largestEV = eigenvals(d*d - 1);
+    matHamilt.submat(B*d-d,0,B*d-1,d-1) =
+        matHamilt.submat(B*d-d,0,B*d-1,d-1) -largestEV * eyed;
+    matHamilt_lmost = matHamilt.rows(B*d-d, B*d-1);
+    matHamilt_rmost = matHamilt.cols(0,d-1);
 
     WL.fromMat(matHamilt_lmost, mkIdxSet(sdl), mkIdxSet(sul,b));
     WR.fromMat(matHamilt_rmost, mkIdxSet(sdr,b), mkIdxSet(sur));
@@ -941,11 +938,15 @@ IDMRG::iterate(){
         lfout << entanglement_spectrum << endl;
     }
 
+    // final energy calcualtions
+    mFinalEnergy = expectation_twosite(energyMPO);
+
     // printing useful information
     lfout << "finished in " << iteration << " iteration" << endl;
-    lfout << "final truncation error" << endl;
-    lfout << truncations[energy.size()-1] << endl;
-    lfout << "Von-Neumann : " << renyi(1.0,entanglement_spectrum) << endl;
+    lfout << "final truncation error : "
+          << truncations[energy.size()-1] << endl;
+    lfout << "final energy : " << mFinalEnergy << endl;
+        lfout << "Von-Neumann : " << renyi(1.0,entanglement_spectrum) << endl;
     lfout << "Renyi  0.5  : " << renyi(0.5, entanglement_spectrum) << endl;
     lfout << "Renyi  2    : " << renyi(2.0, entanglement_spectrum) << endl;
     lfout << "Renyi  100  : " << renyi(100.0, entanglement_spectrum) << endl;
@@ -958,14 +959,12 @@ IDMRG::iterate(){
  * an example is S_z
  */
 double IDMRG::expectation_onesite(cx_mat onesite_op){
-    //double expectation_value = 0.0;
     u_int D = canonical_Lambda.size();
     Index lu = canonical_Gamma.indeces[0];
     Index ru = canonical_Gamma.indeces[3];
     Index il("il",D),ir("ir",D);
     cx_mat eyeD(D,D);
     eyeD.eye();
-    lfout << "starting the one site calculation" << endl;
     // the one site operator is a d.d matrix
     Tensor onesite, lamleft, lamright;
     onesite.fromMat(kron(onesite_op, eye(d,d)) + kron(eye(d,d), onesite_op),
@@ -994,10 +993,38 @@ double IDMRG::expectation_onesite(cx_mat onesite_op){
  * an example is the energy for NN models
  */
 double IDMRG::expectation_twosite(cx_mat twosite_op){
-    double expectation_value = 0.0;
-    Tensor Gamma_star = canonical_Gamma.conjugate();
+    u_int D = canonical_Lambda.size();
+    Index lu = canonical_Gamma.indeces[0];
+    Index ru = canonical_Gamma.indeces[3];
+    Index il("il",D), ir("ir",D), lu2("lu2",D), ru2("ru2",D);
+    Index sul2("sul2", d), sur2("sur2", d), sdl2("sdl2", d);
+    cx_mat eyeD(D,D);
+    eyeD.eye();
+    // the one site operator is a d.d matrix
+    Tensor canonical_Gamma2;
+    canonical_Gamma2 = canonical_Gamma;
+    canonical_Gamma2.reIndex(lu2,sul2,sur2,ru2);
 
-    return expectation_value;
+    Tensor twosite, lamleft, lambetw, lamright;
+    twosite.fromMat(kron(twosite_op, eye(d,d)) + kron(eye(d,d), twosite_op),
+                    mkIdxSet(sdl,sdr,sdl2),mkIdxSet(sul,sur,sul2));
+    lamleft.fromMat(eyeD * diagmat(canonical_Lambda),
+                    mkIdxSet(il), mkIdxSet(lu));
+    lambetw.fromMat(eyeD * diagmat(canonical_Lambda),
+                    mkIdxSet(ru), mkIdxSet(lu2));
+    lamright.fromMat(eyeD * diagmat(canonical_Lambda),
+                     mkIdxSet(ru2), mkIdxSet(ir));
+
+    Tensor up =
+        lamleft * canonical_Gamma * lambetw * canonical_Gamma2 * lamright;
+    Tensor dn = up.conjugate();
+    // Gamma_up.printIndeces();
+    dn.reIndex(mkIdxSet(il,sdl,sdr,sdl2, sur2,ir));
+    // Gamma_dn.printIndeces();
+    // onesite.printIndeces();
+    Tensor result = up * twosite * dn;
+
+    return result.values[0].real()/2.0;
 }
 
 /**

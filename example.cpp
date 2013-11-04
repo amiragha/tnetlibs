@@ -49,6 +49,6 @@ int main(int argc, char *argv[])
     matHamilt.submat(6,0,7,1) = PauliZ;
     matHamilt.submat(8,6,9,7) = PauliZ;
 
-    IDMRG testidmrg(matHamilt, 5, 2, 20, 1.0e-8, true);
+    IDMRG testidmrg(matHamilt, 5, 2, 20, 1.0e-6, true);
     return 0;
 }
