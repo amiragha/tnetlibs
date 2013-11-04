@@ -48,5 +48,9 @@ std::vector<Index> mkIdxSet (const Index one, const Index two,
 std::vector<Index> mkIdxSet (const Index one, const Index two,
                              const Index three, const Index four,
                              const Index five, const Index six);
+std::vector<Index> mkIdxSet (const Index one, const Index two,
+                             const Index three, const Index four,
+                             const Index five, const Index six,
+                             const Index seven, const Index eight);
 
 #endif /* _INDEX_H_ */

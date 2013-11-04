@@ -2,21 +2,14 @@
 #include "Tensor.h"
 #include "ternaryMera.h"
 #include "iDMRG.h"
-#include <armadillo>
 
 using namespace std;
 using namespace arma;
 
 int main(int argc, char *argv[])
 {
-
-    // testing Tensor.h
-    Index a("a",2), b("b",3), c("c",4);
-    Tensor ten;
-    ten.fromMat(randu<cx_mat>(6,4), mkIdxSet(a,b), mkIdxSet(c));
-    //ten.print(4);
-    Tensor ten_sliced = ten.slice(b,1,2);
-    ten_sliced.print(4);
+    //defining some indeces for test and run
+    Index a("a", 3), b("b", 2), c("c", 2), d("d",2), e("e",3),f("f",2);
 
     // defining pauli matrices
     cx_mat PauliX,PauliY,PauliZ,I;
@@ -32,30 +25,30 @@ int main(int argc, char *argv[])
     cx_mat I2(2,2);
     I2.eye();
 
-    // example for MERA
-    // ITF Hamiltonian
-    // introducing Hamiltonian
+    cx_mat I4(4,4);
+    I4.eye();
+
+    // making the ITF Hamiltonian
     cx_mat ITF = -kron(PauliZ,PauliZ)-kron(PauliX,I2)/2-kron(I2,PauliX)/2;
 
-    // calling ternary MERA
+    //cout << ITF<<endl;
+
     // TernaryMera test(ITF, 2, 4, true);
     // test.buOptimize(30,true, true);
 
     // example for iDMRG
-    // XY model
-    // introducing the Hamiltonian as MPO
+    // Heisenberg Hamiltonian
     cx_mat matHamilt;
-    matHamilt = zeros<cx_mat>(8,8);
+    matHamilt = zeros<cx_mat>(10,10);
     matHamilt.submat(0,0,1,1) = I2;
-    matHamilt.submat(6,6,7,7) = I2;
+    matHamilt.submat(8,8,9,9) = I2;
     matHamilt.submat(2,0,3,1) = PauliX;
-    matHamilt.submat(6,2,7,3) = PauliX;
+    matHamilt.submat(8,2,9,3) = PauliX;
     matHamilt.submat(4,0,5,1) = PauliY;
-    matHamilt.submat(6,4,7,5) = PauliY;
+    matHamilt.submat(8,4,9,5) = PauliY;
+    matHamilt.submat(6,0,7,1) = PauliZ;
+    matHamilt.submat(8,6,9,7) = PauliZ;
 
-    // calling IDMRG
-    IDMRG testidmrg(matHamilt, 4, 2, 8, 1.0e-4, true);
-    cout << testidmrg.expectation_onesite(PauliZ) << endl;
+    IDMRG testidmrg(matHamilt, 5, 2, 20, 1.0e-8, true);
     return 0;
-
 }
