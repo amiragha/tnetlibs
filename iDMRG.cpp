@@ -232,7 +232,7 @@ IDMRG::do_step()
 
 
     // guess fidelity calculations
-    guessFidelity.push_back(abs(cdot(guess/norm(guess,2), ksiVec)));
+    guessFidelity.push_back(1.0 - abs(cdot(guess/norm(guess,2), ksiVec)));
 
 
     /*
@@ -251,7 +251,7 @@ IDMRG::do_step()
     cx_mat U,V;
     vec S;
     //svd(U,S,V,ksi.toMat( mkIdxSet(lu,sul), mkIdxSet(ru,sur) ) );
-    svd(U,S,V,reshape(ksiVec,d*D,d*D));
+    svd_econ(U,S,V,reshape(ksiVec,D*d,D*d));
 
     // lambda size check
     nextD = lambda_size_trunc(S);
@@ -285,7 +285,7 @@ IDMRG::do_step()
 void IDMRG::guess_calculate(const cx_mat & U, const cx_mat & V,
                             const mat & S, u_int D, u_int nextD){
     cx_mat newA, newB, left_lambda, right_lambda,u,v;
-    mat diags;
+    //mat diags;
     vec s;
     /*
      * rotate left
@@ -295,8 +295,6 @@ void IDMRG::guess_calculate(const cx_mat & U, const cx_mat & V,
      * and since only we have QR factorization we use it on lft.t() and
      * then find the Q.t() and R.t() to perform a RQ transition
      */
-    if (verbose)
-        lfout << "starting left rotation!" << endl;
 
     cx_mat AL  = U * S;
     cx_mat lft;
@@ -307,21 +305,16 @@ void IDMRG::guess_calculate(const cx_mat & U, const cx_mat & V,
             AL.submat(i*D,0,(i+1)*D-1,nextD-1);
     }
 
-    // cx_mat lft = (U * S);
-    //  lft.reshape(D,d*nextD);
-    svd(u, s, newB, lft);
+    svd_econ(u, s, newB, lft);
     newB = newB.t();
-    diags = diagmat(s);
-    diags.resize(D,d*nextD);
-    left_lambda = u*diags;
+    left_lambda = u*diagmat(s);
 
     /*
      * rotate right
      * note: S_trunc * V.t()_trunc is a matrix of nextD*D.d dimension
      * we need to perform svd on the matrix d.nextd*D
      */
-    if (verbose)
-        lfout << "starting right rotation!" << endl;
+
     cx_mat LB  = S * V.t();
     cx_mat rgt;
     rgt.set_size(nextD*d,D);
@@ -331,13 +324,8 @@ void IDMRG::guess_calculate(const cx_mat & U, const cx_mat & V,
             LB.submat(0,i*D,nextD-1,(i+1)*D-1);
     }
 
-    // cx_mat rgt = (S * V.t()).st();
-    // rgt.reshape(D, d*nextD);
-    // svd(newA,s,v,rgt.st());
-    svd(newA,s,v,rgt);
-    diags = diagmat(s);
-    diags.resize(nextD*d,D);
-    right_lambda = diags*v.t();
+    svd_econ(newA,s,v,rgt);
+    right_lambda = diagmat(s)*v.t();
 
 
     /*
@@ -355,8 +343,6 @@ void IDMRG::guess_calculate(const cx_mat & U, const cx_mat & V,
      * guesscore is the inverse of the last lambda
      */
     int n = lambda.size()-1;
-    if (verbose)
-        lfout << "guess calculation" << endl;
     mat guesscore = inv(diagmat(lambda[n-1]));
 
     // convergence test
@@ -375,9 +361,6 @@ void IDMRG::guess_calculate(const cx_mat & U, const cx_mat & V,
     cx_mat guessMat = newA * right_lambda * guesscore * left_lambda * newB;
     // if a fully random is needed
     //cx_mat guessMat = randu<cx_mat>(d*nextD,d*nextD);
-
-    // Defining new l and r indeces and
-    // Index nru("ru",nextD), nlu("lu",nextD);
 
     // building the Tensor guess
     guess = reshape(guessMat,d*d*nextD*nextD,1);
@@ -666,7 +649,7 @@ void IDMRG::canonicalize(Tensor A, Tensor B, u_int D, u_int nextD){
  * converts it to Tensor first, performs the contraction and then gives the
  * result back as vector
  * input of operateH must be a vector built out of a tensor
- * with indeces = sul:d, lu:D, sur:d, ru:D
+ * with indeces = lu sul ru sur
  */
 void
 IDMRG::operateH(cx_vec & q, cx_vec & res){
@@ -812,7 +795,7 @@ IDMRG::Lanczos(arma::cx_vec& vstart, arma::cx_vec& eigenVector)
     eigenValue = eigenValsT(0);
     eigenVector = Q * eigenVecsT.col(0);
 
-    double r_threshold = 1.0e-12;
+    //double r_threshold = 1.0e-12;
     //r= guess.toVec();
 
     return eigenValue;
