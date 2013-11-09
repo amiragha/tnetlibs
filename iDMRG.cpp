@@ -402,25 +402,20 @@ void IDMRG::update_LR(const cx_mat & U, const cx_mat & V,
  * canonicalize
  * canonicalize the wavefunction using the middle A,B, lambda calculated
  */
-void IDMRG::canonicalize(Tensor A, Tensor B, u_int D, u_int nextD){
+void IDMRG::canonicalize(Tensor A, Tensor B, u_int D, u_int nextD)
+{
     // canonicalization
     if (verbose)
         lfout << "starting Canonilcalization" << endl;
 
     u_int n = lambda.size()-1;
 
-    /*
-     * A and B indeces:
-     * A := plu:D, sul:d, nlu:nextD
-     * B := nru:D, pru:nextD, sur:d
-     *
-     */
+    // needed indeces
     Index plu = A.indeces[0];
-    Index sul = A.indeces[1];
     Index nlu = A.indeces[2];
     Index nru = B.indeces[0];
     Index pru = B.indeces[1];
-    Index sur = B.indeces[2];
+
     /*
      * Justify truncation:
      * in the process of canonicalization D and nextD must be equal, so
@@ -429,164 +424,138 @@ void IDMRG::canonicalize(Tensor A, Tensor B, u_int D, u_int nextD){
      * matrix is zero then we have to further reduce the dimension of the
      * matrices.
      */
-    // if D > nextD
-    if (D > nextD){
-        if (verbose){
-            lfout << "D = " << D << " is larger than nextD = " << nextD
-                  << ", trunrcation has to occur" << endl;
-        }
-        // reduce D to nextD
-        D = nextD;
-        // A and B truncation
-        cx_mat tempA, tempB;
-        // using slice
-        A = A.slice(plu,0,D);
-        B = B.slice(pru,0,D);
-        pru.card = D;
-        plu.card = D;
-    }
 
-    // if D < nextD
-    if (D != nextD && verbose)
-        lfout << "WARNING: D != nextD in canonicalization" << endl;
+    // the process of canonicalization has 5 steps.
+    // 1) re-indexing tensors
+    // 2) UP, DN Tensor definitions
+    // 3) sending to Arnoldi
+    // 4) eigen solving the left/right eigen vector
+    // 5) naming the eigen decomposition of left/right eigen vector
 
-    // according to mcculloch
-    /*
-     * Notations:
-     * Lam : Lambda[n]
-     * Lambar :inv(Lambda[n-1])
-     */
     // needed Indexes and Tensors
     Index gmr("gmr", D), gml("gml", D), ou("ou", D), od("od", D),
-        vu("vu", D), vd("vd", D), tl("tl", D), tr("tr",D), lu("lu",D), ru("ru", D);
-    Tensor Lam, Lambar, Vec;
-    cx_mat Vecmat, Vecvecs;
-    cx_mat X, Y;
-    vec Vecvals;
-    cx_vec invec;
-    cx_mat eyeD;
-    eyeD.eye(D,D);
-    cx_mat dlam,dlambar;
-    mat old_lambda = diagmat(lambda[n-1](span(0,D-1)));
-    dlambar = eyeD * inv(diagmat(lambda[n-1](span(0,D-1))));
-    dlam = eyeD * diagmat(lambda[n](span(0,D-1)));
-    Lam.fromMat(dlam,mkIdxSet(gml),mkIdxSet(gmr));
-
-    // left canonicalization
-    /*
-     * indeces:
-     * A = vu, sul, gml
-     * B = grm, pru, sur
-     * Lam = gml, gmr
-     * Lambar = pru, ou
-     */
-    // printing gammas
-    //if (verbose){
-    // A.printIndeces();
-    // B.printIndeces();
-    // lfout << "A :" << endl << A.toMat(mkIdxSet(plu,sul),mkIdxSet(nlu)) << endl;
-    // lfout << "B :" << endl << B.toMat(mkIdxSet(nru,sur),mkIdxSet(pru)) << endl;
-    //}
+        vu("vu", D), vd("vd", D);
+    Tensor inv_lambda_B, lambda_A;
+    cx_mat Vecmat, lft_vecs, rgt_vecs, X, Y;
+    vec lft_vals, rgt_vals;
     cx_d arnoldi_res;
-    Lambar.fromMat(dlambar,mkIdxSet(pru), mkIdxSet(ou));
-    A.reIndex(mkIdxSet(vu,sul,gml));
-    B.reIndex(mkIdxSet(gmr,pru,sur));
-    UP_tensor = A * Lam * B * Lambar;
-    DN_tensor = UP_tensor.conjugate();
-    DN_tensor.reIndex(mkIdxSet(vd,sul,sur,od));
-    Vec.fromVec(randu<cx_vec>(D*D),mkIdxSet(vu,vd));
-    invec = randu<cx_vec>(D*D);
-    arnoldi_res = arnoldi(invec, Vecmat);
-    if (verbose)
-        lfout << arnoldi_res << endl;
-    Vecmat.reshape(D, D);
-    Vecmat = Vecmat/Vecmat.max();
-    eig_sym(Vecvals,Vecvecs,Vecmat);
-    if (verbose)
-        lfout << "left : " << endl << Vecvals << endl;
-    Y = Vecvecs*diagmat(sqrt(Vecvals));
-    Y = Y.st();
+    cx_vec invec;
 
-    // the eigenvalue of sorted in ascending order
-    u_int lastD_left;
-    for (lastD_left = 0; lastD_left < Vecvals.size(); ++lastD_left){
-        if (abs(Vecvals[lastD_left]) > 1.0e-10)
-            break;
-    }
-    lastD_left = D - lastD_left;
+    vec lambda_B_vec = lambda[n-1];
+    cx_mat lambda_B_mat;
 
-    // right canonicalization
-    A.reIndex(mkIdxSet(plu, sul, gml));
-    B.reIndex(mkIdxSet(gmr, vu, sur));
-    Lam.reIndex(mkIdxSet(gml,gmr));
-    Lambar.reIndex(mkIdxSet(ou,plu));
-    UP_tensor = Lambar * A * Lam * B;
-    DN_tensor = UP_tensor.conjugate();
-    DN_tensor.reIndex(mkIdxSet(od,sul,vd,sur));
-    Vec.fromVec(randu<cx_vec>(D*D),mkIdxSet(vu,vd));
-    arnoldi_res = arnoldi(invec, Vecmat);
-    if (verbose)
-        lfout << arnoldi_res << endl;
-    Vecmat.reshape(D, D);
-    Vecmat = Vecmat/Vecmat.max();
-    eig_sym(Vecvals,Vecvecs,Vecmat);
-    //eig_gen(iVecvals,Vecvecs,Vecmat);
-    if (verbose)
-        lfout << "right : " << endl << Vecvals << endl;
-    X = Vecvecs*diagmat(sqrt(Vecvals));
+    lambda_A.fromMat(eye<cx_mat>(nextD, nextD) * diagmat(lambda[n]),
+                     mkIdxSet(gml),mkIdxSet(gmr));
 
-    u_int lastD_right;
-    for (lastD_right = 0; lastD_right < Vecvals.size(); ++lastD_right){
-        if (abs(Vecvals[lastD_right]) > 1.0e-10)
-            break;
-    }
-    lastD_right = D - lastD_right;
+    u_int currentD, finalD = D;
+    while (true)
+    {
+        cout << "here" << endl;
+        ou.card = finalD;
+        od.card = finalD;
+        vu.card = finalD;
+        vd.card = finalD;
+        lambda_B_mat = eye<cx_mat>(finalD, finalD) * diagmat(lambda_B_vec);
+        inv_lambda_B.fromMat(inv(lambda_B_mat),
+                             mkIdxSet(pru), mkIdxSet(ou));
+        // left canonicalization
+        // 1) ------------------------------------------------------------------
+        A.reIndex(mkIdxSet(vu,sul,gml));
+        B.reIndex(mkIdxSet(gmr,pru,sur));
+        // 2) ------------------------------------------------------------------
+        UP_tensor = A * lambda_A * B * inv_lambda_B;
+        DN_tensor = UP_tensor.conjugate();
+        DN_tensor.reIndex(mkIdxSet(vd,sul,sur,od));
+        // 3) ------------------------------------------------------------------
+        invec = randu<cx_vec>(finalD*finalD);
+        arnoldi_res = arnoldi(invec, Vecmat);
+        if (verbose) lfout << arnoldi_res << endl;
+        Vecmat /= Vecmat.max();
+        Vecmat /= norm(Vecmat,2);
+        // 4) ------------------------------------------------------------------
+        eig_sym(lft_vals,lft_vecs,reshape(Vecmat, finalD, finalD));
+        if (verbose) lfout << "left : " << endl << lft_vals << endl;
 
-    // check for compatibility of left and right
-    assert (lastD_right == lastD_left);
-    u_int lastD = lastD_right;
-    //int lastD = 2;
-    if (lastD != D){
-        if (verbose)
-            lfout << "D is : " << D << " and lastD is : " << lastD << endl;
-        // performing needed truncaton
+        // right canonicalization
+        // 1) ------------------------------------------------------------------
+        inv_lambda_B.reIndex(mkIdxSet(ou,plu));
+        A.reIndex(mkIdxSet(plu, sul, gml));
+        B.reIndex(mkIdxSet(gmr, vu, sur));
+        // 2) ------------------------------------------------------------------
+        UP_tensor = inv_lambda_B * A * lambda_A * B;
+        DN_tensor = UP_tensor.conjugate();
+        DN_tensor.reIndex(mkIdxSet(od,sul,vd,sur));
+        // 3) ------------------------------------------------------------------
+        invec = randu<cx_vec>(finalD*finalD);
+        arnoldi_res = arnoldi(invec, Vecmat);
+        if (verbose) lfout << arnoldi_res << endl;
+        Vecmat /= Vecmat.max();
+        Vecmat /= norm(Vecmat,2);
+        // 4) ------------------------------------------------------------------
+        eig_sym(rgt_vals,rgt_vecs,reshape(Vecmat, finalD, finalD));
+        if (verbose) lfout << "right : " << endl << rgt_vals << endl;
+
+        // remove the zeros
+        for (currentD = 0; currentD < lft_vals.size(); ++currentD)
+        {
+            if (abs(lft_vals[currentD]) > 1.0e-14 &&
+                abs(rgt_vals[currentD]) > 1.0e-14) break;
+        }
+        currentD = finalD - currentD;
+
+        if (finalD == currentD) break;
+        finalD = currentD;
+        cout << "finalD = " << finalD << endl;
+
         A.reIndex(mkIdxSet(plu, sul, nlu));
         B.reIndex(mkIdxSet(nru, pru, sur));
-        A = A.slice(plu,0,lastD).slice(nlu,0,lastD);
-        B = B.slice(nru,0,lastD).slice(pru,0,lastD);
-        canonicalize(A,B,lastD,lastD);
-        return;
 
-    } else
-        lastD = D;
+        A = A.slice(plu,0,finalD-1);
+        plu.card = finalD;
+
+        B = B.slice(pru,0,finalD-1);
+        pru.card = finalD;
+        // truncate lambda_B
+        lambda_B_vec = lambda_B_vec(span(0,finalD-1));
+        lambda_B_vec /= norm(lambda_B_vec, 2);
+    }
+    cout << "out of while" << endl;
+
+    // 5) ------------------------------------------------------------------
+    Y = diagmat(sqrt(lft_vals))*lft_vecs.st();
+    X = rgt_vecs*diagmat(sqrt(rgt_vals));
 
     if (verbose){
-        lfout << "old Von-Neuman entropy is : " << renyi(1.0,lambda[n-1])<< endl;
+        lfout << "old Von-Neuman entropy is : " << renyi(1.0,lambda_B_vec)<< endl;
         lfout << "defining new lambda and Gamma" << endl;
     }
+
+
     // defining new lambda and new gamma
+    Index tl("tl", finalD), tr("tr",finalD), lu("lu",finalD), ru("ru", finalD);
     vec new_lambda_vec;
     cx_mat U,V;
-    svd(U, new_lambda_vec, V, (Y * old_lambda * X) );
-    // normalizing new_lambda_vec
-    new_lambda_vec = new_lambda_vec/norm(new_lambda_vec,2);
+
+    svd(U, new_lambda_vec, V, (Y * lambda_B_mat * X) );
+    new_lambda_vec /= norm(new_lambda_vec,2);
 
     cx_mat templeft_mat, tempright_mat;
     Tensor templeft, tempright, rLambar, lLambar, new_Gamma, new_lambda;
-    rLambar = Lambar;
-    lLambar = Lambar;
+    rLambar = inv_lambda_B;
+    lLambar = inv_lambda_B;
+    rLambar.reIndex(mkIdxSet(pru, tr));
+    lLambar.reIndex(mkIdxSet(tl, plu));
     A.reIndex(mkIdxSet(plu, sul, gml));
     B.reIndex(mkIdxSet(gmr, pru, sur));
-    Lam.reIndex(mkIdxSet(gml, gmr));
-    lLambar.reIndex(mkIdxSet(tl, plu));
-    rLambar.reIndex(mkIdxSet(pru, tr));
+
     templeft_mat = V.t() * inv(X);
     templeft.fromMat(templeft_mat,mkIdxSet(lu),mkIdxSet(tl));
     tempright_mat = inv(Y) * U;
     tempright.fromMat(tempright_mat,mkIdxSet(tr),mkIdxSet(ru));
-    new_Gamma = templeft *  lLambar * A * Lam * B * rLambar * tempright;
-    //new_Gamma.printIndeces();
-    new_lambda.fromMat(eyeD * diagmat(new_lambda_vec), mkIdxSet(ru),mkIdxSet(ou));
+    new_Gamma = templeft *  lLambar * A * lambda_A * B * rLambar * tempright;
+    new_Gamma.printIndeces();
+    new_lambda.fromMat(eye<cx_mat>(finalD, finalD) * diagmat(new_lambda_vec),
+                       mkIdxSet(ru),mkIdxSet(ou));
 
     // putting results into the class
     canonical_Lambda = new_lambda_vec;
@@ -597,45 +566,40 @@ void IDMRG::canonicalize(Tensor A, Tensor B, u_int D, u_int nextD){
     if (verbose)
         lfout << "right canonicalization check" << endl;
 
+    // 1),2)
     UP_tensor = new_Gamma * new_lambda;
     UP_tensor.reIndex(ou,sul,sur,vu);
     DN_tensor = UP_tensor.conjugate();
     DN_tensor.reIndex(mkIdxSet(od,sul,sur,vd));
-    Vec.fromVec(randu<cx_vec>(D*D),mkIdxSet(vu,vd));
-    invec = randu<cx_vec>(D*D);
+    // 3)
+    invec = randu<cx_vec>(finalD*finalD);
     arnoldi_res = arnoldi(invec, Vecmat);
-    if (verbose)
-        lfout << arnoldi_res << endl;
-    Vecmat.reshape(D, D);
-    Vecmat = Vecmat/Vecmat.max();
-    eig_sym(Vecvals,Vecmat);
-    if (verbose)
-        lfout << "right check is : " << endl << Vecvals;
-    // TO-DO : add an assert for canonicalization check
+    if (verbose) lfout << arnoldi_res << endl;
+    Vecmat /= Vecmat.max();
+    Vecmat /= norm(Vecmat,2);
+    // 4)
+    eig_sym(rgt_vals,rgt_vecs,reshape(Vecmat, finalD, finalD));
+    if (verbose) lfout << "right check is: " << endl << rgt_vals << endl;
 
     // left check
-    /*
-     * find the product of lambda from left to Gamma and find the new
-     * left largest eigenvalue and the corresponding eigenvector
-     */
     if (verbose)
         lfout << "left check" << endl;
+    // 1)
     new_Gamma.reIndex(mkIdxSet(lu,sul,sur,ou));
     new_lambda.reIndex(mkIdxSet(vu,lu));
-    // now UP_tensor must have Indexes: vu, sul, sur, ou
+    // 2)
     UP_tensor = new_lambda * new_Gamma;
     DN_tensor = UP_tensor.conjugate();
     DN_tensor.reIndex(mkIdxSet(vd,sul,sur,od));
-    Vec.fromVec(randu<cx_vec>(D*D),mkIdxSet(vu,vd));
-    invec = randu<cx_vec>(D*D);
+    // 3)
+    invec = randu<cx_vec>(finalD*finalD);
     arnoldi_res = arnoldi(invec, Vecmat);
-    if (verbose)
-        lfout << arnoldi_res << endl;
-    Vecmat.reshape(D, D);
-    Vecmat = Vecmat /Vecmat.max(); // killing the irrelevant phase factor
-    eig_sym(Vecvals,Vecmat);
-    if (verbose)
-        lfout << "left check is : " << endl << Vecvals;
+    if (verbose) lfout << arnoldi_res << endl;
+    Vecmat /= Vecmat.max();
+    Vecmat /= norm(Vecmat,2);
+    // 4)
+    eig_sym(lft_vals,rgt_vecs,reshape(Vecmat, finalD, finalD));
+    if (verbose) lfout << "left check is: " << endl << lft_vals << endl;
 
     canonical_Gamma/sqrt(arnoldi_res.real());
     UP_tensor/sqrt(arnoldi_res.real());
@@ -929,7 +893,7 @@ IDMRG::iterate(){
     lfout << "final truncation error : "
           << truncations[energy.size()-1] << endl;
     lfout << "final energy : " << mFinalEnergy << endl;
-        lfout << "Von-Neumann : " << renyi(1.0,entanglement_spectrum) << endl;
+    lfout << "Von-Neumann : " << renyi(1.0,entanglement_spectrum) << endl;
     lfout << "Renyi  0.5  : " << renyi(0.5, entanglement_spectrum) << endl;
     lfout << "Renyi  2    : " << renyi(2.0, entanglement_spectrum) << endl;
     lfout << "Renyi  100  : " << renyi(100.0, entanglement_spectrum) << endl;
