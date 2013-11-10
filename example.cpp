@@ -50,5 +50,6 @@ int main(int argc, char *argv[])
     matHamilt.submat(8,6,9,7) = PauliZ;
 
     IDMRG testidmrg(matHamilt, 5, 2, 20, 1.0e-6, true);
+    cout << gsFidelity(testidmrg, testidmrg) << endl;
     return 0;
 }

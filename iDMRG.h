@@ -72,6 +72,11 @@ public:
      * Renyi entroypy calculator
      */
     double renyi(double alpha, const arma::vec & L);
+
+    // ACCESSES
+    Tensor get_GL() const;
+    Tensor get_LG() const;
+    Tensor get_LGL() const;
     Tensor get_Gamma() const;
     arma::vec get_Lambda() const;
 
@@ -80,7 +85,7 @@ private:
     bool                         verbose;
     u_int                        iteration;
     std::ofstream                lfout;
-    u_int                        B, d, maxD;
+    u_int                        B, d, maxD, finalD;
     std::vector<u_int>           matDims; /// D at each level
     arma::cx_mat                 energyMPO;
 
@@ -106,7 +111,6 @@ private:
     Tensor                       canonical_Gamma;
     arma::vec                    canonical_Lambda;
     double                       mFinalEnergy;
-
 
     /*
      * needed Indexes

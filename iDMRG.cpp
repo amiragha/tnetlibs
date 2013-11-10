@@ -17,6 +17,7 @@ IDMRG::IDMRG(cx_mat & mHamilt, u_int Bdim, u_int dim, u_int mD,
     B = Bdim;
     d = dim;
     maxD = mD;
+    finalD = 0;
     converged = false;
     convergence_threshold = con_thresh;
 
@@ -447,10 +448,10 @@ void IDMRG::canonicalize(Tensor A, Tensor B, u_int D, u_int nextD)
     lambda_A.fromMat(eye<cx_mat>(nextD, nextD) * diagmat(lambda[n]),
                      mkIdxSet(gml),mkIdxSet(gmr));
 
-    u_int currentD, finalD = D;
+    u_int currentD;
+    finalD = D;
     while (true)
     {
-        cout << "here" << endl;
         ou.card = finalD;
         od.card = finalD;
         vu.card = finalD;
@@ -459,39 +460,39 @@ void IDMRG::canonicalize(Tensor A, Tensor B, u_int D, u_int nextD)
         inv_lambda_B.fromMat(inv(lambda_B_mat),
                              mkIdxSet(pru), mkIdxSet(ou));
         // left canonicalization
-        // 1) ------------------------------------------------------------------
+        // 1)
         A.reIndex(mkIdxSet(vu,sul,gml));
         B.reIndex(mkIdxSet(gmr,pru,sur));
-        // 2) ------------------------------------------------------------------
+        // 2)
         UP_tensor = A * lambda_A * B * inv_lambda_B;
         DN_tensor = UP_tensor.conjugate();
         DN_tensor.reIndex(mkIdxSet(vd,sul,sur,od));
-        // 3) ------------------------------------------------------------------
+        // 3)
         invec = randu<cx_vec>(finalD*finalD);
         arnoldi_res = arnoldi(invec, Vecmat);
         if (verbose) lfout << arnoldi_res << endl;
         Vecmat /= Vecmat.max();
         Vecmat /= norm(Vecmat,2);
-        // 4) ------------------------------------------------------------------
+        // 4)
         eig_sym(lft_vals,lft_vecs,reshape(Vecmat, finalD, finalD));
         if (verbose) lfout << "left : " << endl << lft_vals << endl;
 
         // right canonicalization
-        // 1) ------------------------------------------------------------------
+        // 1)
         inv_lambda_B.reIndex(mkIdxSet(ou,plu));
         A.reIndex(mkIdxSet(plu, sul, gml));
         B.reIndex(mkIdxSet(gmr, vu, sur));
-        // 2) ------------------------------------------------------------------
+        // 2)
         UP_tensor = inv_lambda_B * A * lambda_A * B;
         DN_tensor = UP_tensor.conjugate();
         DN_tensor.reIndex(mkIdxSet(od,sul,vd,sur));
-        // 3) ------------------------------------------------------------------
+        // 3)
         invec = randu<cx_vec>(finalD*finalD);
         arnoldi_res = arnoldi(invec, Vecmat);
         if (verbose) lfout << arnoldi_res << endl;
         Vecmat /= Vecmat.max();
         Vecmat /= norm(Vecmat,2);
-        // 4) ------------------------------------------------------------------
+        // 4)
         eig_sym(rgt_vals,rgt_vecs,reshape(Vecmat, finalD, finalD));
         if (verbose) lfout << "right : " << endl << rgt_vals << endl;
 
@@ -519,11 +520,10 @@ void IDMRG::canonicalize(Tensor A, Tensor B, u_int D, u_int nextD)
         lambda_B_vec = lambda_B_vec(span(0,finalD-1));
         lambda_B_vec /= norm(lambda_B_vec, 2);
     }
-    cout << "out of while" << endl;
 
-    // 5) ------------------------------------------------------------------
-    Y = diagmat(sqrt(lft_vals))*lft_vecs.st();
-    X = rgt_vecs*diagmat(sqrt(rgt_vals));
+    // 5)
+    Y = diagmat(sqrt(lft_vals)) * lft_vecs.st();
+    X = rgt_vecs * diagmat(sqrt(rgt_vals));
 
     if (verbose){
         lfout << "old Von-Neuman entropy is : " << renyi(1.0,lambda_B_vec)<< endl;
@@ -533,14 +533,13 @@ void IDMRG::canonicalize(Tensor A, Tensor B, u_int D, u_int nextD)
 
     // defining new lambda and new gamma
     Index tl("tl", finalD), tr("tr",finalD), lu("lu",finalD), ru("ru", finalD);
-    vec new_lambda_vec;
     cx_mat U,V;
 
-    svd(U, new_lambda_vec, V, (Y * lambda_B_mat * X) );
-    new_lambda_vec /= norm(new_lambda_vec,2);
+    svd(U, canonical_Lambda, V, (Y * lambda_B_mat * X) );
+    canonical_Lambda /= norm(canonical_Lambda,2);
 
     cx_mat templeft_mat, tempright_mat;
-    Tensor templeft, tempright, rLambar, lLambar, new_Gamma, new_lambda;
+    Tensor templeft, tempright, rLambar, lLambar, new_lambda;
     rLambar = inv_lambda_B;
     lLambar = inv_lambda_B;
     rLambar.reIndex(mkIdxSet(pru, tr));
@@ -552,22 +551,19 @@ void IDMRG::canonicalize(Tensor A, Tensor B, u_int D, u_int nextD)
     templeft.fromMat(templeft_mat,mkIdxSet(lu),mkIdxSet(tl));
     tempright_mat = inv(Y) * U;
     tempright.fromMat(tempright_mat,mkIdxSet(tr),mkIdxSet(ru));
-    new_Gamma = templeft *  lLambar * A * lambda_A * B * rLambar * tempright;
-    new_Gamma.printIndeces();
-    new_lambda.fromMat(eye<cx_mat>(finalD, finalD) * diagmat(new_lambda_vec),
-                       mkIdxSet(ru),mkIdxSet(ou));
+    canonical_Gamma =
+        templeft *  lLambar * A * lambda_A * B * rLambar * tempright;
 
-    // putting results into the class
-    canonical_Lambda = new_lambda_vec;
+    // entanglement spectrum
     entanglement_spectrum = canonical_Lambda % canonical_Lambda;
-    canonical_Gamma = new_Gamma;
 
     // checking canonicalization
     if (verbose)
         lfout << "right canonicalization check" << endl;
 
     // 1),2)
-    UP_tensor = new_Gamma * new_lambda;
+    //UP_tensor = new_Gamma * new_lambda;
+    UP_tensor = get_GL();
     UP_tensor.reIndex(ou,sul,sur,vu);
     DN_tensor = UP_tensor.conjugate();
     DN_tensor.reIndex(mkIdxSet(od,sul,sur,vd));
@@ -575,8 +571,7 @@ void IDMRG::canonicalize(Tensor A, Tensor B, u_int D, u_int nextD)
     invec = randu<cx_vec>(finalD*finalD);
     arnoldi_res = arnoldi(invec, Vecmat);
     if (verbose) lfout << arnoldi_res << endl;
-    Vecmat /= Vecmat.max();
-    Vecmat /= norm(Vecmat,2);
+    Vecmat /= Vecmat(0);
     // 4)
     eig_sym(rgt_vals,rgt_vecs,reshape(Vecmat, finalD, finalD));
     if (verbose) lfout << "right check is: " << endl << rgt_vals << endl;
@@ -584,26 +579,23 @@ void IDMRG::canonicalize(Tensor A, Tensor B, u_int D, u_int nextD)
     // left check
     if (verbose)
         lfout << "left check" << endl;
-    // 1)
-    new_Gamma.reIndex(mkIdxSet(lu,sul,sur,ou));
-    new_lambda.reIndex(mkIdxSet(vu,lu));
-    // 2)
-    UP_tensor = new_lambda * new_Gamma;
+    // 1),2)
+    UP_tensor = get_LG();
+    UP_tensor.reIndex(mkIdxSet(vu,sul,sur,ou));
     DN_tensor = UP_tensor.conjugate();
     DN_tensor.reIndex(mkIdxSet(vd,sul,sur,od));
     // 3)
     invec = randu<cx_vec>(finalD*finalD);
     arnoldi_res = arnoldi(invec, Vecmat);
     if (verbose) lfout << arnoldi_res << endl;
-    Vecmat /= Vecmat.max();
-    Vecmat /= norm(Vecmat,2);
+    Vecmat /= Vecmat(0);
     // 4)
     eig_sym(lft_vals,rgt_vecs,reshape(Vecmat, finalD, finalD));
     if (verbose) lfout << "left check is: " << endl << lft_vals << endl;
 
+    // normalizing the canonical_Gamma
     canonical_Gamma/sqrt(arnoldi_res.real());
-    UP_tensor/sqrt(arnoldi_res.real());
-    DN_tensor/sqrt(arnoldi_res.real());
+
 }
 
 /**
@@ -1010,6 +1002,44 @@ double IDMRG::renyi(double alpha, const vec & L){
     return result;
 }
 
+Tensor IDMRG::get_GL() const
+{
+    Index ru("ru", finalD), lu("lu", finalD), rru("rru", finalD);
+    Tensor c_lambda;
+    c_lambda.fromMat(eye<cx_mat>(finalD, finalD) * diagmat(canonical_Lambda)
+                     , mkIdxSet(ru), mkIdxSet(rru));
+    Tensor result = canonical_Gamma * c_lambda;
+    result.reIndex(lu, sul, sur, ru);
+    return result;
+}
+
+Tensor IDMRG::get_LG() const
+{
+    Index ru("ru", finalD), lu("lu", finalD), llu("llu", finalD);
+    Tensor c_lambda;
+    c_lambda.fromMat(eye<cx_mat>(finalD, finalD) * diagmat(canonical_Lambda)
+                     , mkIdxSet(llu), mkIdxSet(lu));
+    Tensor result = c_lambda * canonical_Gamma;
+    result.reIndex(lu, sul, sur, ru);
+    return result;
+}
+
+Tensor IDMRG::get_LGL() const
+{
+    Index ru("ru", finalD), lu("lu", finalD),
+        llu("llu", finalD), rru("rru", finalD);
+    Tensor c_lambda_left, c_lambda_right;
+    c_lambda_left.fromMat(eye<cx_mat>(finalD, finalD)
+                          * diagmat(canonical_Lambda)
+                          , mkIdxSet(llu), mkIdxSet(lu));
+    c_lambda_right.fromMat(eye<cx_mat>(finalD, finalD)
+                          * diagmat(canonical_Lambda)
+                          , mkIdxSet(ru), mkIdxSet(rru));
+    Tensor result = c_lambda_left * canonical_Gamma * c_lambda_right;
+    result.reIndex(lu, sul, sur, ru);
+    return result;
+}
+
 Tensor IDMRG::get_Gamma() const{
     return canonical_Gamma;
 }
@@ -1024,25 +1054,28 @@ vec gsFidelity(const IDMRG & left, const IDMRG & right){
     u_int D = (Dl > Dr) ? Dr : Dl;
     cout << "Dl = " << Dl << ", Dr = " << Dr << " => D =" << D << endl;
 
-    Index vu("vu", D), vd("vd", D), lu("lu", D), ru("ru", D), ld("ld", D), rd("rd",D);
-    Tensor leftGam = left.get_Gamma();
-    Tensor rightGam = right.get_Gamma().conjugate();
-    Index sul = leftGam.indeces[1];
-    Index sur = leftGam.indeces[2];
-    leftGam = leftGam.slice(leftGam.indeces[0],0,D).slice(leftGam.indeces[3],0,D);
-    rightGam = rightGam.slice(rightGam.indeces[0],0,D).slice(rightGam.indeces[3],0,D);
-    Tensor leftLam, rightLam;
-    cx_mat eyeD(D,D);
-    eyeD.eye();
-    leftLam.fromMat(eyeD * diagmat(left.get_Lambda()(span(0,D-1))), mkIdxSet(ru), mkIdxSet(vu));
-    rightLam.fromMat(eyeD * diagmat(right.get_Lambda()(span(0,D-1))), mkIdxSet(ru), mkIdxSet(vd));
-    cout << "constructing up and dn" << endl;
-    Tensor up = leftGam * leftLam;
-    Tensor dn = rightGam * rightLam;
+    Index vu("vu", D), vd("vd", D),
+        lu("lu", D), ru("ru", D), ld("ld", D), rd("rd",D);
 
-    dn.reIndex(ld,sul,sur,vd);
+    Tensor up = left.get_GL();
+    Tensor dn = right.get_GL();
+    dn = dn.conjugate();
+    Index sul = up.indeces[1];
+    Index sur = up.indeces[2];
+    // asserting the equality of sur, sul in dn/up tensors
+    assert (sul == dn.indeces[1]);
+    assert (sur == dn.indeces[2]);
+
+    // needed truncation
+    up = up.slice(up.indeces[0],0,D).slice(up.indeces[3],0,D);
+    dn = dn.slice(dn.indeces[0],0,D).slice(dn.indeces[3],0,D);
+
+    up.reIndex(lu, sul, sur, ru);
+    dn.reIndex(ld, sul, sur, rd);
+
     Tensor Vr = up * dn;
-    Vr.reIndex(ld,lu,vd,vu);
+    Vr.printIndeces();
+    Vr.rearrange(mkIdxSet(ld,lu,rd,ru));
     cx_vec tranferEig;
     cx_mat dummy;
     eig_gen(tranferEig, dummy, Vr.toMat(2,2));
