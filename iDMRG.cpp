@@ -80,6 +80,95 @@ IDMRG::IDMRG(cx_mat & mHamilt, u_int Bdim, u_int dim, u_int mD,
     lfout.close();
 }
 
+IDMRG::IDMRG(arma::cx_mat& mHamilt, u_int Bdim, u_int dim, u_int mD,
+      Tensor& in_left, Tensor& in_right,
+      arma::cx_vec& in_guess, arma::vec& in_llamb,
+      double con_thresh, bool in_verbose,
+      std::string logfile)
+{
+    verbose = in_verbose;
+    B = Bdim;
+    d = dim;
+    maxD = mD;
+    finalD = 0;
+    converged = false;
+    convergence_threshold = con_thresh;
+
+    Left = in_left;
+    Right = in_right;
+    guess = in_guess;
+    llamb = in_llamb;
+    // checking the sizes of the hamiltonian with the given Bdim and dim
+    assert (mHamilt.size() == d * Bdim * Bdim * d);
+
+    cx_mat matHamilt, matHamilt_lmost, matHamilt_rmost;
+    matHamilt = mHamilt;
+    matHamilt_lmost = matHamilt.rows(B*d-d, B*d-1);
+    matHamilt_rmost = matHamilt.cols(0,d-1);
+
+    /* the first dimension is always one
+     * This is due to open boundary condition
+     */
+    // TO-DO : check for close boundary conditions
+    u_int initialD = llamb.size();
+    matDims.push_back(initialD);
+
+    // initialization of needed indeces for the whole class
+    // TO-DO : find a better initialization for indeces
+    bl.i("bl",B), br.i("br",B), b.i("b",B),
+        sul.i("sul",d), sdl.i("sdl",d), sur.i("sur",d), sdr.i("sdr",d),
+        sd.i("sd",d), su.i("su",d);
+
+    //arnoldi = new Arnoldi(&applyUPDN);
+    /* Note:
+     * here WL has Indeces = sdl:d, sul:d, b:B
+     * here WR has Indeces = sdr:d, b:B, sur:d
+     * then W  has Indeces = sdl:d, sul:d, sdr:d, sur:d
+     */
+    vec eigenvals;
+    cx_mat eyed(d,d);
+    eyed.eye();
+    WL.fromMat(matHamilt_lmost, mkIdxSet(sdl), mkIdxSet(sul,b));
+    WR.fromMat(matHamilt_rmost, mkIdxSet(sdr,b), mkIdxSet(sur));
+    W = WL * WR;
+    W.rearrange(mkIdxSet(sdl,sdr,sul,sur));
+    energyMPO = W.toMat(2,2);
+    eig_sym(eigenvals,energyMPO);
+    largestEV = eigenvals(d*d - 1);
+    matHamilt.submat(B*d-d,0,B*d-1,d-1) =
+        matHamilt.submat(B*d-d,0,B*d-1,d-1) -largestEV * eyed;
+    matHamilt_lmost = matHamilt.rows(B*d-d, B*d-1);
+    matHamilt_rmost = matHamilt.cols(0,d-1);
+
+    WL.fromMat(matHamilt_lmost, mkIdxSet(sdl), mkIdxSet(sul,b));
+    WR.fromMat(matHamilt_rmost, mkIdxSet(sdr,b), mkIdxSet(sur));
+    W = WL * WR;
+    W.rearrange(mkIdxSet(sdl,sdr,sul,sur));
+
+    // defining Hamiltonian Tensors
+    // constructing Hamiltonian Tensors from matrices
+    Hamilt.fromMat(matHamilt, mkIdxSet(sd,bl), mkIdxSet(su,br));
+
+    WL = Hamilt;
+    WR = Hamilt;
+    WL.reIndex(mkIdxSet(sdl,bl,sul,b));
+    WR.reIndex(mkIdxSet(sdr,b,sur,br));
+
+    // W indeces : sdl:d, bl:B, sul:d, sdr:d, sur:d, br:B
+    W = WL * WR;
+    WL.reIndex(mkIdxSet(sdl,b,sul,bl));
+    WR.reIndex(mkIdxSet(sdr,br,sur,b));
+
+    iteration = 0;
+
+
+    lfout.open(logfile.c_str());
+    // start the initial setup
+    zeroth_iter_with_init();
+    iterate();
+    lfout.close();
+}
+
 IDMRG::~IDMRG(){
     //delete arnoldi;
 }
@@ -197,6 +286,89 @@ IDMRG::zeroth_iter()
     W = WL * WR;
     WL.reIndex(mkIdxSet(sdl,b,sul,bl));
     WR.reIndex(mkIdxSet(sdr,br,sur,b));
+
+
+}
+
+void
+IDMRG::zeroth_iter_with_init()
+{
+
+    cout << "zero" << endl;
+    iteration = 0;
+
+    u_int nextD, D = matDims.back();
+
+    // needed indeces
+    Index lu("lu", D), ru("ru", D),ld("ld", D), rd("rd", D);
+
+    // lanczos step
+    cx_vec ksiVec;
+    energy.push_back(Lanczos(guess, ksiVec));
+
+    // guess fidelity calculations
+    guessFidelity.push_back(1.0 - abs(cdot(guess/norm(guess,2), ksiVec)));
+    cx_mat U,V;
+    vec S;
+    //svd(U,S,V,ksi.toMat( mkIdxSet(lu,sul), mkIdxSet(ru,sur) ) );
+    svd_econ(U,S,V,reshape(ksiVec,D*d,D*d));
+
+    // lambda size check
+    nextD = lambda_size_trunc(S);
+
+    // truncation step
+    cx_mat U_trunc = U.cols(0, nextD-1);
+    cx_mat V_trunc = V.cols(0, nextD-1);
+    vec S_trunc = S(span(0, nextD-1));
+
+    // truncated lambda
+    double lambda_norm = norm(S_trunc,2);
+    truncations.push_back(1-lambda_norm);
+
+    // normalizing lambda
+    lambda.push_back(S_trunc/lambda_norm);
+
+    mat S_trunc_mat = diagmat(S_trunc/lambda_norm);
+
+    // calculating guess for the next iteration
+    convergence.push_back(1);
+
+    cx_mat newA, newB, left_lambda, right_lambda,u,v;
+    //mat diags;
+    vec s;
+    cx_mat AL  = U_trunc * S_trunc_mat;
+    cx_mat lft;
+    lft.set_size(D,nextD*d);
+    for (u_int i = 0; i<d; ++i)
+    {
+        lft.submat(0,i*nextD,D-1,(i+1)*nextD-1) =
+            AL.submat(i*D,0,(i+1)*D-1,nextD-1);
+    }
+
+    svd_econ(u, s, newB, lft);
+    newB = newB.t();
+    left_lambda = u*diagmat(s);
+    cx_mat LB  = S_trunc_mat * V_trunc.t();
+    cx_mat rgt;
+    rgt.set_size(nextD*d,D);
+    for (u_int i = 0; i<d; ++i)
+    {
+        rgt.submat(i*nextD,0,(i+1)*nextD-1,D-1) =
+            LB.submat(0,i*D,nextD-1,(i+1)*D-1);
+    }
+
+    svd_econ(newA,s,v,rgt);
+    right_lambda = diagmat(s)*v.t();
+    mat guesscore = inv(diagmat(llamb));
+
+    cx_mat guessMat = newA * right_lambda * guesscore * left_lambda * newB;
+    // if a fully random is needed
+    //cx_mat guessMat = randu<cx_mat>(d*nextD,d*nextD);
+
+    // building the Tensor guess
+    guess = reshape(guessMat,d*d*nextD*nextD,1);
+
+    update_LR(U_trunc, V_trunc, D, nextD);
 
 }
 
@@ -622,6 +794,9 @@ IDMRG::operateH(cx_vec & q, cx_vec & res){
      */
     Left.reIndex(mkIdxSet(lu,bl,ld));
     Right.reIndex(mkIdxSet(ru,br,rd));
+    // Left.printIndeces();
+    // Right.printIndeces();
+    // W.printIndeces();
 
     // given Tensor must have the indeces : sul, lu, sur, ru
     // Tensor given;
@@ -1038,6 +1213,23 @@ Tensor IDMRG::get_LGL() const
     Tensor result = c_lambda_left * canonical_Gamma * c_lambda_right;
     result.reIndex(lu, sul, sur, ru);
     return result;
+}
+
+Tensor IDMRG::get_Left() const
+{
+    return Left;
+}
+Tensor IDMRG::get_Right() const
+{
+    return Right;
+}
+arma::cx_vec IDMRG::get_guess() const
+{
+    return guess;
+}
+arma::vec IDMRG::get_llamb() const
+{
+    return lambda.back();
 }
 
 Tensor IDMRG::get_Gamma() const{

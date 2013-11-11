@@ -11,14 +11,19 @@
  * class iDMRG
  * this class contains an iDMRG precedure
  */
-
+typedef arma::cx_mat (*MpoType) (double J);
 class IDMRG
 {
 public:
     /**
      * constructors
      */
-    IDMRG(arma::cx_mat & mHamilt, u_int Bdim, u_int dim, u_int mD,
+    IDMRG(arma::cx_mat& mHamilt, u_int Bdim, u_int dim, u_int mD,
+          double con_thresh = 1.0e-9, bool verbose = false,
+          std::string logfile = "iDMRG_logfile.log");
+    IDMRG(arma::cx_mat& mHamilt, u_int Bdim, u_int dim, u_int mD,
+          Tensor& in_Left, Tensor& in_right,
+          arma::cx_vec& in_guess, arma::vec& in_llamb,
           double con_thresh = 1.0e-9, bool verbose = false,
           std::string logfile = "iDMRG_logfile.log");
     ~IDMRG();
@@ -78,6 +83,11 @@ public:
     Tensor get_LG() const;
     Tensor get_LGL() const;
     Tensor get_Gamma() const;
+    Tensor get_Left() const;
+    Tensor get_Right() const;
+    arma::cx_vec get_guess() const;
+    arma::vec get_llamb() const;
+
     arma::vec get_Lambda() const;
 
     double FinalEnergy() {return mFinalEnergy; }
@@ -95,6 +105,7 @@ private:
     Tensor                       Left, Right;
     Tensor                       UP_tensor, DN_tensor; /// canonicalization
     std::vector<arma::vec>       lambda;
+    arma::vec                    llamb;
 
     // iteration information for reporting
     std::vector<double>          truncations;
@@ -134,7 +145,7 @@ private:
      * two site lattice
      */
     void zeroth_iter();
-
+    void zeroth_iter_with_init();
     /**
      * do_step
      * go one step forward in the iDMRG algorithm
