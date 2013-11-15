@@ -5,7 +5,7 @@ LDFLAGS=-L$(DIR) -Wl,-rpath=$(DIR)
 RM=rm -f
 DIR=$(CURDIR)
 
-SRCS=Tensor.cpp Index.cpp  ternaryMera.cpp iDMRG.cpp
+SRCS=Tensor.cpp Index.cpp  ternaryMera.cpp iDMRG.cpp IDMRGS.cpp
 OBJS=$(subst .cpp,.o,$(SRCS))
 LIBS=libtmera.so libidmrg.so
 EXE=ex
@@ -18,8 +18,8 @@ $(EXE): $(LIBS) example.cpp
 libtmera.so: Tensor.o Index.o ternaryMera.o
 	$(CXX) -shared -o libtmera.so Tensor.o Index.o ternaryMera.o $(LDLIBS)
 
-libidmrg.so: Tensor.o Index.o  iDMRG.o
-	$(CXX) -shared -o libidmrg.so Tensor.o Index.o iDMRG.o $(LDLIBS)
+libidmrg.so: Tensor.o Index.o  iDMRG.o IDMRGS.o
+	$(CXX) -shared -o libidmrg.so Tensor.o Index.o iDMRG.o IDMRGS.o $(LDLIBS)
 
 depend: .depend
 
