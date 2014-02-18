@@ -81,10 +81,10 @@ IDMRG::IDMRG(cx_mat & mHamilt, u_int Bdim, u_int dim, u_int mD,
 }
 
 IDMRG::IDMRG(arma::cx_mat& mHamilt, u_int Bdim, u_int dim, u_int mD,
-      Tensor& in_left, Tensor& in_right,
-      arma::cx_vec& in_guess, arma::vec& in_llamb,
-      double con_thresh, bool in_verbose,
-      std::string logfile)
+             Tensor& in_left, Tensor& in_right,
+             arma::cx_vec& in_guess, arma::vec& in_llamb,
+             double con_thresh, bool in_verbose,
+             std::string logfile)
 {
     verbose = in_verbose;
     B = Bdim;
@@ -94,7 +94,7 @@ IDMRG::IDMRG(arma::cx_mat& mHamilt, u_int Bdim, u_int dim, u_int mD,
     converged = false;
     convergence_threshold = con_thresh;
 
-    Left = in_left;
+    Left  = in_left;
     Right = in_right;
     guess = in_guess;
     llamb = in_llamb;
@@ -741,7 +741,7 @@ void IDMRG::canonicalize(Tensor A, Tensor B, u_int D, u_int nextD)
     DN_tensor.reIndex(mkIdxSet(od,sul,sur,vd));
     // 3)
     invec = randu<cx_vec>(finalD*finalD);
-    arnoldi_res = arnoldi(invec, Vecmat);
+    arnoldi_res = arnoldi(invec, Vecmat,true);
     if (verbose) lfout << arnoldi_res << endl;
     Vecmat /= Vecmat(0);
     // 4)
@@ -758,7 +758,7 @@ void IDMRG::canonicalize(Tensor A, Tensor B, u_int D, u_int nextD)
     DN_tensor.reIndex(mkIdxSet(vd,sul,sur,od));
     // 3)
     invec = randu<cx_vec>(finalD*finalD);
-    arnoldi_res = arnoldi(invec, Vecmat);
+    arnoldi_res = arnoldi(invec, Vecmat,true);
     if (verbose) lfout << arnoldi_res << endl;
     Vecmat /= Vecmat(0);
     // 4)
@@ -1141,6 +1141,20 @@ double IDMRG::expectation_twosite(cx_mat twosite_op){
     return result.values[0].real()/2.0;
 }
 
+double IDMRG::SymmetryEffect(cx_mat symmetry_op){
+    // if (verbose) lfout << "testing symmetry effect" << endl;
+    // UP_tensor = get_GL();
+    // UP_tensor.reIndex(ou,sul,sur,vu);
+    // DN_tensor = UP_tensor.conjugate();
+    // DN_tensor.reIndex(mkIdxSet(od,sul,sur,vd));
+
+    // arma::cx_vec invec = randu<cx_vec>(finalD*finalD);
+    // double arnoldi_res = arnoldi(invec, Vecmat);
+    // if (verbose) lfout << arnoldi_res << endl;
+
+    return 0.9;
+}
+
 /**
  * gsFidelity
  * calculates the ground state fidelity
@@ -1208,8 +1222,8 @@ Tensor IDMRG::get_LGL() const
                           * diagmat(canonical_Lambda)
                           , mkIdxSet(llu), mkIdxSet(lu));
     c_lambda_right.fromMat(eye<cx_mat>(finalD, finalD)
-                          * diagmat(canonical_Lambda)
-                          , mkIdxSet(ru), mkIdxSet(rru));
+                           * diagmat(canonical_Lambda)
+                           , mkIdxSet(ru), mkIdxSet(rru));
     Tensor result = c_lambda_left * canonical_Gamma * c_lambda_right;
     result.reIndex(lu, sul, sur, ru);
     return result;
@@ -1294,7 +1308,8 @@ vec gsFidelity(const IDMRG & left, const IDMRG & right){
     return abs(tranferEig);
 }
 cx_d IDMRG::arnoldi(arma::cx_vec&  vstart,
-                    arma::cx_mat& eigenVectors
+                    arma::cx_mat& eigenVectors,
+                    bool correlation_calculation
                     )
 {
     double conv_thresh = 1.e-15;
@@ -1386,6 +1401,14 @@ cx_d IDMRG::arnoldi(arma::cx_vec&  vstart,
         for (u_int i = 0; i < errors.size();++i)
             lfout << errors(i) << "\t";
         lfout << std::endl;
+    }
+    if (correlation_calculation)
+    {
+        lfout << "for correlation length calculation:" << std::endl;
+        sorted_index = sorted_indeces(number_of_eigs);
+        correlation_length.push_back(eigenValsT(sorted_index));
+        lfout << eigenValsT(sorted_index) << " / " << eigenValue(0)
+              << std::endl << std::endl;
     }
     return eigenValue(0);
 }

@@ -1,4 +1,5 @@
 #include "IDMRGS.h"
+#include "iostream"
 #include <algorithm>
 #include <cassert>
 
@@ -27,7 +28,8 @@ void IDMRGS::Init()
     mDataOut.open(mDataFile.c_str());
     mDataOut << "import numpy as np"    << std::endl
              << "Ent_Spectrum = dict()" << std::endl
-             << "Energy = dict()"       << std::endl;
+             << "Energy = dict()"       << std::endl
+             << "Correlation = dict()"       << std::endl;
 
     for (u_int idx = 0; idx < mOneSites.size(); ++idx)
         mDataOut << mOneSites[idx].first << " = dict()" << std::endl;
@@ -51,7 +53,15 @@ void IDMRGS::Go()
     // first IDMGS instance
     double current_j = mJs[0] + mJadds[0];
     mat_hamilt = mHamiltonian(current_j);
-    idmrgs[0] = new IDMRG(mat_hamilt, mBdim, mSdim, mMaxD, CONV);
+
+    std::stringstream ss;
+    ss << current_j << "_";
+    ss << mMaxD;
+    std::string lfile = "logfile_";
+    ss << ".txt";
+    lfile.append(ss.str());
+
+    idmrgs[0] = new IDMRG(mat_hamilt, mBdim, mSdim, mMaxD, CONV, true, lfile);
 
     Tensor Left        = idmrgs[0]->get_Left();
     Tensor Right       = idmrgs[0]->get_Right();
@@ -96,6 +106,9 @@ void IDMRGS::Go()
         double middle_energy = idmrgs[n_middle]->FinalEnergy();
         mDataOut << "Energy[(" << mMaxD << "," << current_j << ")]= "
                  << middle_energy << std::endl;
+
+        mDataOut << "Correlation[(" << mMaxD << "," << current_j << ")]= "
+                 << idmrgs[n_middle]->correlation_length.back() << std::endl;
 
         // reporting entanglement spectrum
         mDataOut << "Ent_Spectrum[(" << mMaxD << "," << current_j

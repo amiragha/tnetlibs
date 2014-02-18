@@ -28,7 +28,8 @@ public:
           std::string logfile = "iDMRG_logfile.log");
     ~IDMRG();
     cx_d arnoldi(arma::cx_vec& vstart,
-                 arma::cx_mat& eigenVectors);
+                 arma::cx_mat& eigenVectors,
+                 bool correlation_calculation = false);
     /**
      * arnoldi_canonical
      * performs arnoldi algorithms using UP_tensor and DN_tensor
@@ -78,6 +79,11 @@ public:
      */
     double renyi(double alpha, const arma::vec & L);
 
+    /**
+     * effect of symmetry
+     */
+    double SymmetryEffect(arma::cx_mat symmetry_op);
+
     // ACCESSES
     Tensor get_GL() const;
     Tensor get_LG() const;
@@ -90,6 +96,7 @@ public:
 
     arma::vec get_Lambda() const;
 
+    std::vector<cx_d> correlation_length;
     double FinalEnergy() {return mFinalEnergy; }
 private:
     bool                         verbose;
