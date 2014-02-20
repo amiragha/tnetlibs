@@ -21,4 +21,4 @@ This will make a `ex` *executable* file and two shared libraries,
 
 ### dependencies
 
-1. [armadillo](http://arma.sourceforge.net/) must be in LIBRARY_PATH
+1. [armadillo](http://arma.sourceforge.net/) must be in LIBRARY_PATH. Note that the libraries only compile with armadillo 4 up.
