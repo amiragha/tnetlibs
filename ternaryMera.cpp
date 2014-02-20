@@ -106,7 +106,7 @@ TernaryMera::give_random_UniIso(u_int level){
     cx_mat X = randu<cx_mat>(in*in*in,in*in);
     cx_mat Umat, Vmat;
     vec s;
-    svd(Umat,s,Vmat,X);
+    svd(Umat,s,Vmat,X,"std");
 
     // u_idcs = {u1 ,u2, u3, u4};
     // u_ridx = {u1, u2};
@@ -144,7 +144,7 @@ void TernaryMera::give_random_density(){
     cx_mat X = randu<cx_mat>(c,1);
     cx_mat U, V;
     vec s;
-    svd(U,s,V,X);
+    svd(U,s,V,X,"std");
     Tensor U1, U2;
     U1.fromMat(U,mkIdxSet(d1), mkIdxSet(d2));
     U2.fromMat(U,mkIdxSet(d3), mkIdxSet(d4));
@@ -723,7 +723,7 @@ void TernaryMera::iso_update (u_int level, u_int num_update,
         env = iso_env(level,false,negateH);
         Ienvr = vector<Index> (env.indeces.begin(), env.indeces.begin()+3);
         Ienvc = vector<Index> (env.indeces.begin()+3, env.indeces.begin()+4);
-        svd(U,s,V,env.toMat(Ienvr, Ienvc));
+        svd(U,s,V,env.toMat(Ienvr, Ienvc),"std");
         Isometry[level].fromMat(-(V*U.submat(span(),span(0,cards[uplevel]-1)).t()).st(),Ienvr, Ienvc);
 
     }
@@ -758,7 +758,7 @@ void TernaryMera::uni_update (u_int level, u_int num_update,
         env = uni_env(level,false,negateH);
         Uenvr = vector<Index> (env.indeces.begin(), env.indeces.begin()+2);
         Uenvc = vector<Index> (env.indeces.begin()+2, env.indeces.begin()+4);
-        svd(U,s,V,env.toMat(Uenvr, Uenvc));
+        svd(U,s,V,env.toMat(Uenvr, Uenvc),"std");
         Unitary[level].fromMat(-(V*U.t()).st(),Uenvr, Uenvc);
     }
     ascend(level);

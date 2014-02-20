@@ -224,7 +224,7 @@ IDMRG::zeroth_iter()
      */
     cx_mat U,V;
     vec S;
-    svd(U,S,V,reshape(eigenvecs.col(0),d,d));
+    svd(U,S,V,reshape(eigenvecs.col(0),d,d),"std");
 
     // the starting energy for the 2site problem
     energy.push_back(eigenvals(0));
@@ -310,8 +310,8 @@ IDMRG::zeroth_iter_with_init()
     guessFidelity.push_back(1.0 - abs(cdot(guess/norm(guess,2), ksiVec)));
     cx_mat U,V;
     vec S;
-    //svd(U,S,V,ksi.toMat( mkIdxSet(lu,sul), mkIdxSet(ru,sur) ) );
-    svd_econ(U,S,V,reshape(ksiVec,D*d,D*d));
+    //svd(U,S,V,ksi.toMat( mkIdxSet(lu,sul), mkIdxSet(ru,sur) ) ,"std);
+    svd_econ(U,S,V,reshape(ksiVec,D*d,D*d),"std");
 
     // lambda size check
     nextD = lambda_size_trunc(S);
@@ -345,7 +345,7 @@ IDMRG::zeroth_iter_with_init()
             AL.submat(i*D,0,(i+1)*D-1,nextD-1);
     }
 
-    svd_econ(u, s, newB, lft);
+    svd_econ(u, s, newB, lft,"std");
     newB = newB.t();
     left_lambda = u*diagmat(s);
     cx_mat LB  = S_trunc_mat * V_trunc.t();
@@ -357,7 +357,7 @@ IDMRG::zeroth_iter_with_init()
             LB.submat(0,i*D,nextD-1,(i+1)*D-1);
     }
 
-    svd_econ(newA,s,v,rgt);
+    svd_econ(newA,s,v,rgt,"std");
     right_lambda = diagmat(s)*v.t();
     mat guesscore = inv(diagmat(llamb));
 
@@ -380,6 +380,9 @@ void
 IDMRG::do_step()
 {
     iteration++;
+
+    if (verbose)
+        lfout << "Iteration No. " << iteration << std::endl;
 
     u_int nextD, D = matDims.back();
 
@@ -423,8 +426,8 @@ IDMRG::do_step()
 
     cx_mat U,V;
     vec S;
-    //svd(U,S,V,ksi.toMat( mkIdxSet(lu,sul), mkIdxSet(ru,sur) ) );
-    svd_econ(U,S,V,reshape(ksiVec,D*d,D*d));
+    //svd(U,S,V,ksi.toMat( mkIdxSet(lu,sul), mkIdxSet(ru,sur) ) ,"std);
+    svd_econ(U,S,V,reshape(ksiVec,D*d,D*d),"std");
 
     // lambda size check
     nextD = lambda_size_trunc(S);
@@ -463,7 +466,7 @@ void IDMRG::guess_calculate(const cx_mat & U, const cx_mat & V,
     /*
      * rotate left
      * note: U_trunc * S_trunc is a matrix of D.d*nextD dimension
-     * we need to perform svd on the matrix D*d.nextD
+     * we need to perform svd on the matrix D*d.nex,"std"tD
      *
      * and since only we have QR factorization we use it on lft.t() and
      * then find the Q.t() and R.t() to perform a RQ transition
@@ -478,14 +481,14 @@ void IDMRG::guess_calculate(const cx_mat & U, const cx_mat & V,
             AL.submat(i*D,0,(i+1)*D-1,nextD-1);
     }
 
-    svd_econ(u, s, newB, lft);
+    svd_econ(u, s, newB, lft,"std");
     newB = newB.t();
     left_lambda = u*diagmat(s);
 
     /*
      * rotate right
      * note: S_trunc * V.t()_trunc is a matrix of nextD*D.d dimension
-     * we need to perform svd on the matrix d.nextd*D
+     * we need to perform svd on the matrix d.nextd,"std"*D
      */
 
     cx_mat LB  = S * V.t();
@@ -497,7 +500,7 @@ void IDMRG::guess_calculate(const cx_mat & U, const cx_mat & V,
             LB.submat(0,i*D,nextD-1,(i+1)*D-1);
     }
 
-    svd_econ(newA,s,v,rgt);
+    svd_econ(newA,s,v,rgt,"std");
     right_lambda = diagmat(s)*v.t();
 
 
@@ -522,7 +525,7 @@ void IDMRG::guess_calculate(const cx_mat & U, const cx_mat & V,
     vec singular;
     double cnvg_fidelity;
     if (iteration > 1){
-        svd(singular, right_lambda * diagmat(lambda[n-1]));
+        svd(singular, right_lambda * diagmat(lambda[n-1]),"std");
         cnvg_fidelity = 1-sum(singular);
     }
     else
@@ -707,7 +710,7 @@ void IDMRG::canonicalize(Tensor A, Tensor B, u_int D, u_int nextD)
     Index tl("tl", finalD), tr("tr",finalD), lu("lu",finalD), ru("ru", finalD);
     cx_mat U,V;
 
-    svd(U, canonical_Lambda, V, (Y * lambda_B_mat * X) );
+    svd(U, canonical_Lambda, V, (Y * lambda_B_mat * X) ,"std");
     canonical_Lambda /= norm(canonical_Lambda,2);
 
     cx_mat templeft_mat, tempright_mat;
