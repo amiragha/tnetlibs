@@ -311,7 +311,7 @@ IDMRG::zeroth_iter_with_init()
     cx_mat U,V;
     vec S;
     //svd(U,S,V,ksi.toMat( mkIdxSet(lu,sul), mkIdxSet(ru,sur) ) ,"std);
-    svd_econ(U,S,V,reshape(ksiVec,D*d,D*d),"std");
+    svd_econ(U,S,V,reshape(ksiVec,D*d,D*d),'b');
 
     // lambda size check
     nextD = lambda_size_trunc(S);
@@ -345,7 +345,7 @@ IDMRG::zeroth_iter_with_init()
             AL.submat(i*D,0,(i+1)*D-1,nextD-1);
     }
 
-    svd_econ(u, s, newB, lft,"std");
+    svd_econ(u, s, newB, lft,'b');
     newB = newB.t();
     left_lambda = u*diagmat(s);
     cx_mat LB  = S_trunc_mat * V_trunc.t();
@@ -357,7 +357,7 @@ IDMRG::zeroth_iter_with_init()
             LB.submat(0,i*D,nextD-1,(i+1)*D-1);
     }
 
-    svd_econ(newA,s,v,rgt,"std");
+    svd_econ(newA,s,v,rgt,'b');
     right_lambda = diagmat(s)*v.t();
     mat guesscore = inv(diagmat(llamb));
 
@@ -427,7 +427,7 @@ IDMRG::do_step()
     cx_mat U,V;
     vec S;
     //svd(U,S,V,ksi.toMat( mkIdxSet(lu,sul), mkIdxSet(ru,sur) ) ,"std);
-    svd_econ(U,S,V,reshape(ksiVec,D*d,D*d),"std");
+    svd_econ(U,S,V,reshape(ksiVec,D*d,D*d),'b');
 
     // lambda size check
     nextD = lambda_size_trunc(S);
@@ -481,7 +481,7 @@ void IDMRG::guess_calculate(const cx_mat & U, const cx_mat & V,
             AL.submat(i*D,0,(i+1)*D-1,nextD-1);
     }
 
-    svd_econ(u, s, newB, lft,"std");
+    svd_econ(u, s, newB, lft,'b');
     newB = newB.t();
     left_lambda = u*diagmat(s);
 
@@ -500,7 +500,7 @@ void IDMRG::guess_calculate(const cx_mat & U, const cx_mat & V,
             LB.submat(0,i*D,nextD-1,(i+1)*D-1);
     }
 
-    svd_econ(newA,s,v,rgt,"std");
+    svd_econ(newA,s,v,rgt,'b');
     right_lambda = diagmat(s)*v.t();
 
 
@@ -525,7 +525,7 @@ void IDMRG::guess_calculate(const cx_mat & U, const cx_mat & V,
     vec singular;
     double cnvg_fidelity;
     if (iteration > 1){
-        svd(singular, right_lambda * diagmat(lambda[n-1]),"std");
+        svd(singular, right_lambda * diagmat(lambda[n-1]));
         cnvg_fidelity = 1-sum(singular);
     }
     else
